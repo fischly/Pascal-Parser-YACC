@@ -1,0 +1,9 @@
+
+*.exe
+*.exe.stackdump
+
+**/lex.yy.c
+**/*.tab.c
+**/*.tab.h
+
+**/*.code-workspace
