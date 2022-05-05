@@ -15,7 +15,7 @@
     #include "calc.tab.h"
 
     #define PRINT(lexem)  (std::cout << "[Token: \"" << lexem << "\"]" << std::endl)
-    #define PRINTC(comment, lexem) (std::cout << "[" << comment << ": \"" << lexem << "\"]" << std::endl)
+    #define PRINTC(comment, lexem) /*(std::cout << "[" << comment << ": \"" << lexem << "\"]" << std::endl)*/
 
     #define PRINT_ERROR_SYMBOL(lexem) (std::cerr << "ERROR: reading symbol \"" << lexem << "\" on line " << yylineno << std::endl)
     #define PRINT_ERROR_IDENTIFIER(lexem) (std::cerr << "ERROR: not allowed identifier  \"" << lexem << "\" on line " << yylineno << " (identifiers starting with digits are not allowed)" << std::endl)
