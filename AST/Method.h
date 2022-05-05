@@ -18,29 +18,32 @@ public:
     };
 
 
-    Method(Token identifier,
-           std::vector<Variable*> arguments, 
-           std::vector<Variable*> declarations, 
+    Method(Token* identifier,
+           std::vector<Variable*>* arguments, 
+           std::vector<Variable*>* declarations, 
            Stmt::Block* block,
            Variable::VariableType* returnType)
         : identifier{identifier}, arguments{arguments}, declarations{declarations}, block{block}, returnType{returnType}
     {}
     ~Method() {
-        for (auto& arg : arguments) {
+        for (auto& arg : *arguments) {
             delete arg;
         }
 
-        for (auto& decl : declarations) {
+        for (auto& decl : *declarations) {
             delete decl;
         }
+
+        delete arguments;
+        delete declarations;
 
         delete block;
         delete returnType;
     }
 
-    Token identifier;
-    std::vector<Variable*> arguments;
-    std::vector<Variable*> declarations;
+    Token* identifier;
+    std::vector<Variable*>* arguments;
+    std::vector<Variable*>* declarations;
     Stmt::Block* block;
     Variable::VariableType* returnType;
 

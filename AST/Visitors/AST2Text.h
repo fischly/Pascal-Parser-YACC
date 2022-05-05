@@ -35,12 +35,12 @@ private:
         ss << " (defs ";
 
         for (const auto& declVar : declarations) {
-            ss << " (" << declVar->name.lexeme << ": ";
+            ss << " (" << declVar->name->lexeme << ": ";
 
             if (Variable::VariableTypeSimple* simpleVar = dynamic_cast<Variable::VariableTypeSimple*>(declVar->type)) {
-                ss << simpleVar->typeName.lexeme;
+                ss << simpleVar->typeName->lexeme;
             } else if (Variable::VariableTypeArray* arrayVar = dynamic_cast<Variable::VariableTypeArray*>(declVar->type)) {
-                ss << arrayVar->typeName.lexeme << "[" << arrayVar->startRange.lexeme << ".." << arrayVar->stopRange.lexeme << "]";
+                ss << arrayVar->typeName->lexeme << "[" << arrayVar->startRange->lexeme << ".." << arrayVar->stopRange->lexeme << "]";
             }
 
             ss << ")";
@@ -54,12 +54,12 @@ public:
 
     /* --------------- Program ----------------- */
     void visitProgram(Program* prog) {
-        ss << "(program " << prog->identifier.lexeme;
+        ss << "(program " << prog->identifier->lexeme;
 
-        declarations(prog->declarations);
+        declarations(*prog->declarations);
 
         // methods
-        for (const auto& meth : prog->methods) {
+        for (const auto& meth : *prog->methods) {
             meth->accept(this);
             ss << "\n\n";
         }
@@ -72,15 +72,15 @@ public:
 
     /* --------------- Methods ----------------- */
     void visitMethod(Method* meth) {
-        ss << "(method " << meth->identifier.lexeme << " (args";
+        ss << "(method " << meth->identifier->lexeme << " (args";
 
-        for (const auto& argVar : meth->arguments) {
-            ss << " (" << argVar->name.lexeme << ": ";
+        for (const auto& argVar : *meth->arguments) {
+            ss << " (" << argVar->name->lexeme << ": ";
 
             if (Variable::VariableTypeSimple* simpleVar = dynamic_cast<Variable::VariableTypeSimple*>(argVar->type)) {
-                ss << simpleVar->typeName.lexeme;
+                ss << simpleVar->typeName->lexeme;
             } else if (Variable::VariableTypeArray* arrayVar = dynamic_cast<Variable::VariableTypeArray*>(argVar->type)) {
-                ss << arrayVar->typeName.lexeme << "[" << arrayVar->startRange.lexeme << ".." << arrayVar->stopRange.lexeme << "]";
+                ss << arrayVar->typeName->lexeme << "[" << arrayVar->startRange->lexeme << ".." << arrayVar->stopRange->lexeme << "]";
             }
             
             ss << ")";
@@ -88,13 +88,13 @@ public:
         ss << ")";
 
         ss << " (defs";
-        for (const auto& declVar : meth->declarations) {
-            ss << " (" << declVar->name.lexeme << ": ";
+        for (const auto& declVar : *meth->declarations) {
+            ss << " (" << declVar->name->lexeme << ": ";
 
             if (Variable::VariableTypeSimple* simpleVar = dynamic_cast<Variable::VariableTypeSimple*>(declVar->type)) {
-                ss << simpleVar->typeName.lexeme;
+                ss << simpleVar->typeName->lexeme;
             } else if (Variable::VariableTypeArray* arrayVar = dynamic_cast<Variable::VariableTypeArray*>(declVar->type)) {
-                ss << arrayVar->typeName.lexeme << "[" << arrayVar->startRange.lexeme << ".." << arrayVar->stopRange.lexeme << "]";
+                ss << arrayVar->typeName->lexeme << "[" << arrayVar->startRange->lexeme << ".." << arrayVar->stopRange->lexeme << "]";
             }
 
             ss << ")";
@@ -105,9 +105,9 @@ public:
         if (meth->returnType != NULL) {
             ss << " (returns ";
             if (Variable::VariableTypeSimple* simpleVar = dynamic_cast<Variable::VariableTypeSimple*>(meth->returnType)) {
-                ss << simpleVar->typeName.lexeme;
+                ss << simpleVar->typeName->lexeme;
             } else if (Variable::VariableTypeArray* arrayVar = dynamic_cast<Variable::VariableTypeArray*>(meth->returnType)) {
-                ss << arrayVar->typeName.lexeme << "[" << arrayVar->startRange.lexeme << ".." << arrayVar->stopRange.lexeme << "]";
+                ss << arrayVar->typeName->lexeme << "[" << arrayVar->startRange->lexeme << ".." << arrayVar->stopRange->lexeme << "]";
             }
             ss << ")";
         }
@@ -118,7 +118,7 @@ public:
 
     /* --------------- Statements ----------------- */
     void visitAssignment(Stmt::Assignment* stmt) {
-        ss << "(assign " << stmt->identifier.lexeme;
+        ss << "(assign " << stmt->identifier->lexeme;
         if (stmt->arrayIndex != NULL) {
             ss << "[";
             stmt->arrayIndex->accept(this);
@@ -132,9 +132,9 @@ public:
     void visitCall(Stmt::Call* stmt) {
          // convert the vector to list
         std::list<Expr::Expression*> exprList;
-        std::copy(stmt->arguments.begin(), stmt->arguments.end(), std::back_inserter(exprList));
+        std::copy(stmt->arguments->begin(), stmt->arguments->end(), std::back_inserter(exprList));
 
-        parenthesize(stmt->callee.lexeme, exprList);
+        parenthesize(stmt->callee->lexeme, exprList);
     };
 
     void visitIf(Stmt::If* stmt) {
@@ -162,7 +162,7 @@ public:
 
     void visitBlock(Stmt::Block* stmt) {
         ss << "(";
-        for (auto const& stmtInside : stmt->statements) {
+        for (auto const& stmtInside : *stmt->statements) {
             stmtInside->accept(this);
         }
         ss << ")";

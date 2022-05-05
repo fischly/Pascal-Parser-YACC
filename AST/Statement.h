@@ -35,7 +35,7 @@ namespace Stmt {
     /* different types of statements */
     class Assignment : public Statement {
     public:
-        Assignment(Token identifier, Expression* arrayIndex, Expression* value) 
+        Assignment(Token* identifier, Expression* arrayIndex, Expression* value) 
             : identifier{identifier}, arrayIndex{arrayIndex}, value{value}
         {}
         ~Assignment() {
@@ -43,7 +43,7 @@ namespace Stmt {
             delete value;
         }
 
-        Token identifier;
+        Token* identifier;
         Expression* arrayIndex;
         Expression* value;
 
@@ -52,17 +52,18 @@ namespace Stmt {
 
     class Call : public Statement {
     public:
-        Call(Token callee, std::vector<Expression*> arguments)
+        Call(Token* callee, std::vector<Expression*>* arguments)
             : callee{callee}, arguments{arguments}
         {}
         ~Call() {
-            for (auto& arg : arguments) {
+            for (auto& arg : *arguments) {
                 delete arg;
             }
+            delete arguments;
         }
 
-        Token callee;
-        std::vector<Expression*> arguments;
+        Token* callee;
+        std::vector<Expression*>* arguments;
 
         void accept(Visitor* visitor) { visitor->visitCall(this); }
     };
@@ -104,16 +105,17 @@ namespace Stmt {
 
     class Block : public Statement {
     public:
-        Block(std::vector<Statement*> statements)
+        Block(std::vector<Statement*>* statements)
             : statements{statements}
         {}
         ~Block() {
-            for (auto& stmt : statements) {
+            for (auto& stmt : *statements) {
                 delete stmt;
             }
+            delete statements;
         }
 
-        std::vector<Statement*> statements;
+        std::vector<Statement*>* statements;
 
         void accept(Visitor* visitor) { visitor->visitBlock(this); }
     };

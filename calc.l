@@ -7,6 +7,10 @@
     #include <iostream>
     #include "AST/Token.h"
     #include "AST/Expression.h"
+    #include "AST/Statement.h"
+    #include "AST/Variable.h"
+    #include "AST/Method.h"
+    #include "AST/Program.h"
 
     #include "calc.tab.h"
 
