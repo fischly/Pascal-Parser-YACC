@@ -1,4 +1,7 @@
 # Pascal-Parser-YACC
+
+[![.github/workflows/c.yml](https://github.com/fischly/Pascal-Parser-YACC/actions/workflows/c.yml/badge.svg?branch=native_c)](https://github.com/fischly/Pascal-Parser-YACC/actions/workflows/c.yml)
+
 | Environment| Version|
 |-|-|
 Operating System    | Ubuntu 20.04.4 LTS
