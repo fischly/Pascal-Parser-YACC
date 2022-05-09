@@ -76,53 +76,37 @@
 /* Identifier */
 %token <token> IDENTIFIER
 
-
-
-/* ========================= TYPING ========================= */
-
-%type <token> relOp addOp mulOp simpleType 
-%type <expression> factor term simpleExpr expr index
-%type <expressionList> exprList params
-%type <statement> statement procCall assignStmt compStmt ifStmt whileStmt
-%type <statementList> stmtList
-%type <variableType> type
-%type <variableList> varDec varDecList identListType parList args
-%type <method> subProgHead
-%type <methodList> subProgList
-%type <tokenList> identList
-%type <program> start
-
 %%
 
-store       : start { result = $1; }
+store       : start
 
 /* =========================================================== */
 /* ==================== Program grammar ====================== */
 /* =========================================================== */
 
 start       : PROGRAM IDENTIFIER SEMICOLON 
-              varDec subProgList compStmt DOT                 { $$ = new Program($2, $4, $5, static_cast<Stmt::Block*>($6)); }
+              varDec subProgList compStmt DOT                
             ;
 
-varDec      : VAR varDecList                                  { $$ = $2; }
-            | /* epsilon */                                   { $$ = new std::vector<Variable*>(); }
+varDec      : VAR varDecList                                 
+            | /* epsilon */                                  
             ;
 
-varDecList  : varDecList identListType SEMICOLON              { $$ = $1; std::copy($2->begin(), $2->end(), std::back_inserter(*$$)); }
-            | identListType SEMICOLON                         { $$ = $1; }
+varDecList  : varDecList identListType SEMICOLON             
+            | identListType SEMICOLON                        
             ;
 
-identListType : identList COLON type                          { $$ = new std::vector<Variable*>(); for (const auto token : *$1) { $$->push_back(new Variable(token, $3)); } }
+identListType : identList COLON type                         
               ;
 
-identList   : identList COMMA IDENTIFIER                      { $$ = $1; $$->push_back($3); }
-            | IDENTIFIER                                      { $$ = new std::vector<Token*>(); $$->push_back($1); }
+identList   : identList COMMA IDENTIFIER                     
+            | IDENTIFIER                                     
             ;
 
-type        : simpleType                                      { $$ = new Variable::VariableTypeSimple($1); }
+type        : simpleType                                     
             | ARRAY SQUARE_OPEN 
               LITERAL_INTEGER RANGE_DOTS LITERAL_INTEGER
-              SQUARE_CLOSING OF simpleType                    { $$ = new Variable::VariableTypeArray($8, $3, $5); }
+              SQUARE_CLOSING OF simpleType                   
             ;
 
 simpleType  : INTEGER
@@ -134,20 +118,20 @@ simpleType  : INTEGER
 /* ===================== Method grammar ====================== */
 /* =========================================================== */
 
-subProgList : subProgList subProgHead varDec compStmt SEMICOLON { $$ = $1; $2->declarations = $3; $2->block = static_cast<Stmt::Block*>($4); $$->push_back($2); }
-            | /* epsilon */                                     { $$ = new std::vector<Method*>(); }
+subProgList : subProgList subProgHead varDec compStmt SEMICOLON
+            | /* epsilon */                                    
             ;
 
-subProgHead : FUNCTION IDENTIFIER args COLON type SEMICOLON     { $$ = new Method($2, $3, nullptr, nullptr, $5); }
-            | PROCEDURE IDENTIFIER args SEMICOLON               { $$ = new Method($2, $3, nullptr, nullptr, nullptr); }
+subProgHead : FUNCTION IDENTIFIER args COLON type SEMICOLON    
+            | PROCEDURE IDENTIFIER args SEMICOLON              
             ;
 
-args        : BRACKETS_OPEN parList BRACKETS_CLOSING            { $$ = $2; }
-            | /* epsilon */                                     { $$ = new std::vector<Variable*>(); }
+args        : BRACKETS_OPEN parList BRACKETS_CLOSING           
+            | /* epsilon */                                    
             ;
 
-parList     : parList SEMICOLON identListType                   { $$ = $1; std::copy($3->begin(), $3->end(), std::back_inserter(*$$)); }
-            | identListType                                     { $$ = $1; }
+parList     : parList SEMICOLON identListType                  
+            | identListType                                    
             ;
 
 
@@ -155,95 +139,95 @@ parList     : parList SEMICOLON identListType                   { $$ = $1; std::
 /* =================== Statement grammar ===================== */
 /* =========================================================== */
 
-statement   : procCall                                          { $$ = $1; }
-            | assignStmt                                        { $$ = $1; }
-            | compStmt                                          { $$ = $1; }
-            | ifStmt                                            { $$ = $1; }
-            | whileStmt                                         { $$ = $1; }
+statement   : procCall                                         
+            | assignStmt                                       
+            | compStmt                                         
+            | ifStmt                                           
+            | whileStmt                                        
             ;
 
-procCall    : IDENTIFIER                                        { $$ = new Stmt::Call($1, new std::vector<Expression*>()); }
-            | IDENTIFIER params                                 { $$ = new Stmt::Call($1, $2); }
+procCall    : IDENTIFIER                                       
+            | IDENTIFIER params                                
             ;
-params      : BRACKETS_OPEN exprList BRACKETS_CLOSING           { $$ = $2; }
-            ;
-
-
-assignStmt  : IDENTIFIER OP_ASSIGNMENT expr                     { $$ = new Stmt::Assignment($1, nullptr, $3); }
-            | IDENTIFIER index OP_ASSIGNMENT expr               { $$ = new Stmt::Assignment($1, $2, $4); }
-            ;
-index       : SQUARE_OPEN expr SQUARE_CLOSING                   { $$ = $2; }
-            | SQUARE_OPEN expr RANGE_DOTS expr SQUARE_CLOSING   { $$ = $2; } /* TODO: fix */
+params      : BRACKETS_OPEN exprList BRACKETS_CLOSING          
             ;
 
 
-compStmt    : BEGIN_ stmtList END_                              { $$ = new Stmt::Block($2); }
+assignStmt  : IDENTIFIER OP_ASSIGNMENT expr                    
+            | IDENTIFIER index OP_ASSIGNMENT expr              
             ;
-stmtList    : stmtList SEMICOLON statement                      { $$ = $1; $$->push_back($3); }
-            | statement                                         { $$ = new std::vector<Stmt::Statement*>(); $$->push_back($1); }
+index       : SQUARE_OPEN expr SQUARE_CLOSING                  
+            | SQUARE_OPEN expr RANGE_DOTS expr SQUARE_CLOSING   /* TODO: fix */
+            ;
+
+
+compStmt    : BEGIN_ stmtList END_                             
+            ;
+stmtList    : stmtList SEMICOLON statement                     
+            | statement                                        
             ;
 
 
-ifStmt      : IF expr THEN statement                            { $$ = new Stmt::If($2, $4, nullptr); }
-            | IF expr THEN statement ELSE statement             { $$ = new Stmt::If($2, $4, $6); }
+ifStmt      : IF expr THEN statement                           
+            | IF expr THEN statement ELSE statement            
             ;
 
-whileStmt   : WHILE expr DO statement                           { $$ = new Stmt::While($2, $4); }
+whileStmt   : WHILE expr DO statement                          
             ;
 
 /* =========================================================== */
 /* =================== Expression grammar ==================== */
 /* =========================================================== */
 
-expr        : simpleExpr relOp simpleExpr                       { $$ = new Expr::Binary($1, $2, $3); }
-            | simpleExpr                                        { $$ = $1; }
+expr        : simpleExpr relOp simpleExpr                      
+            | simpleExpr                                       
             ;
 
-simpleExpr  : simpleExpr addOp term                             { $$ = new Expr::Binary($1, $2, $3); }
-            | term                                              { $$ = $1; }
+simpleExpr  : simpleExpr addOp term                            
+            | term                                             
             ;
     
-term        : term mulOp factor                                 { $$ = new Expr::Binary($1, $2, $3); }
-            | factor                                            { $$ = $1; }
+term        : term mulOp factor                                
+            | factor                                           
             ;
 
-factor      : LITERAL_INTEGER                                   { $$ = new Expr::Literal($1); }
-            | LITERAL_REAL                                      { $$ = new Expr::Literal($1); }
-            | LITERAL_STRING                                    { $$ = new Expr::Literal($1); }
-            | LITERAL_TRUE                                      { $$ = new Expr::Literal($1); }
-            | LITERAL_FALSE                                     { $$ = new Expr::Literal($1); }
+factor      : LITERAL_INTEGER                                  
+            | LITERAL_REAL                                     
+            | LITERAL_STRING                                   
+            | LITERAL_TRUE                                     
+            | LITERAL_FALSE                                    
 
-            | IDENTIFIER                                        { $$ = new Expr::Identifier($1, NULL); }
-            | IDENTIFIER SQUARE_OPEN expr SQUARE_CLOSING        { $$ = new Expr::Identifier($1, $3); }
-            | IDENTIFIER BRACKETS_OPEN exprList BRACKETS_CLOSING { $$ = new Expr::Call($1, $3); }
+            | IDENTIFIER                                       
+            | IDENTIFIER SQUARE_OPEN expr SQUARE_CLOSING       
+            | IDENTIFIER BRACKETS_OPEN exprList BRACKETS_CLOSING
 
-            | OP_NOT factor                                     { $$ = new Expr::Unary($1, $2); }
-            | OP_SUB factor                                     { $$ = new Expr::Unary($1, $2); }
+            | OP_NOT factor                                    
+            | OP_SUB factor                                    
 
-            | BRACKETS_OPEN expr BRACKETS_CLOSING               { $$ = new Expr::Grouping($2); }
+            | BRACKETS_OPEN expr BRACKETS_CLOSING              
             ;
 
-relOp       : OP_EQUALS                                         { }
-            | OP_NOT_EQUALS                                     { }
-            | OP_LESS                                           { }
-            | OP_LESS_EQUAL                                     { }
-            | OP_GREATER                                        { }
-            | OP_GREATER_EQUAL                                  { }
+relOp       : OP_EQUALS                                        
+            | OP_NOT_EQUALS                                    
+            | OP_LESS                                          
+            | OP_LESS_EQUAL                                    
+            | OP_GREATER                                       
+            | OP_GREATER_EQUAL                                 
             ;
 
-addOp       : OP_ADD                                            { }
-            | OP_SUB                                            { }
-            | OP_OR                                             { }
+addOp       : OP_ADD                                           
+            | OP_SUB                                           
+            | OP_OR                                            
             ;
 
-mulOp       : OP_MUL                                            { }
-            | OP_DIV                                            { }
-            | OP_INTEGER_DIV                                    { }
-            | OP_AND                                            { }
+mulOp       : OP_MUL                                           
+            | OP_DIV                                           
+            | OP_INTEGER_DIV                                   
+            | OP_AND                                           
 
 
-exprList    : exprList COMMA expr                               { $$ = $1; $$->insert($$->end(), $1->begin(), $1->end()); $$->push_back($3); }
-            | expr                                              { $$ = new std::vector<Expr::Expression*>(); $$->push_back($1); }
+exprList    : exprList COMMA expr                              
+            | expr                                             
             ;
 
 
@@ -254,14 +238,6 @@ int main (void)
 {
   // start parser
   yyparse();
-
-  // initialize AST printer and start accepting the expression
-  AST2Text ast2text;
-  result->accept(&ast2text);
-
-  // output printer result to stdout
-  std::cout << ast2text.getResult() << std::endl;
-
 }
 
 void yyerror(const char* msg)
