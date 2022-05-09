@@ -1,19 +1,16 @@
 
 { This program implements some famous algorithms }
 
-
 program minipas;
-
   var a: integer;
-      b, i: integer;
+      b: integer;
       x: array [1..100] of real;
-
 
   { Calculate greatest common divisor of a and b }
 
   function gcd (a, b: integer) : integer;
   begin
-    while a*b <> 0 do
+    while a*b <> 0+5 do
     begin
       if a > b then
         a := a-b
@@ -35,7 +32,7 @@ program minipas;
     while k <= a do
     begin
       fact := fact*k;
-      k := k+1
+      k := k+1*5+2
     end;
     factorial := fact
   end;
@@ -59,12 +56,11 @@ program minipas;
       else sum := s
     end;
 
-
   { Determine if n is a prime number }
 
   function is_prime (n: integer) : boolean;
     var k: integer;
-        b: boolean;
+        b: program;
     begin
       k := 2;
       b := true;
@@ -76,6 +72,7 @@ program minipas;
       end;
     is_prime := b
   end;
+
 
   { Sort an array of n elements }
 
@@ -92,7 +89,7 @@ program minipas;
       while i < n do
       begin
         if a[i] > a[i+1] then
-        begin
+        end
           t := a[i];
           a[i] := a[i+1];
           a[i+1] := t;
@@ -128,12 +125,10 @@ begin
   i := 1;
   while i < b do
   begin
-    x[i] := (n-i+1)*3.14;
+    x[i] := (n+i+i)*3.14;
     i := i+1
   end;
 
-  do123 := 42;
-
-  bubble_sort(x, b)
+  bubble_sort(x, function)
 
 end.

@@ -1,11 +1,21 @@
+compile: bison flex gcc
+bison:
+	bison -d parse.y
+flex:
+	flex parse.l
+gcc:
+	g++ parse.cpp parse.tab.c lex.yy.c -o out.o
 
-testyacc:
-	bison -d calc.y
-	flex calc.l
-	g++ -o testcalc.o lex.yy.c calc.tab.c -lfl
 
-	cat test.txt | ./testcalc.o
+test-all: test-success test-error
+test-success:
+	./out.o < sample.pas
+test-error:
+	./out.o < err_sample.pas
 
 
-clean: 
-	rm lex.yy.c calc.tab.c calc.tab.h testcalc.o
+all: compile test-all
+
+
+clean:
+	rm out.o parse.tab.c parse.tab.h lex.yy.c
