@@ -7,3 +7,5 @@
 **/*.tab.h
 
 **/*.code-workspace
+
+**.o
