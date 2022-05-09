@@ -1,3 +1,4 @@
+compile: yacc lex gcc
 all: yacc lex gcc test-all
 yacc:
 	yacc -d parse.y

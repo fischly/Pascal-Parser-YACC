@@ -10,9 +10,7 @@ extern int position;
 extern char* yytext;
 extern int yyleng;
 
-
 char* latestRule;
-
 
 %}
 
@@ -24,7 +22,7 @@ char* latestRule;
 %token OF 
 %token FUNCTION 
 %token PROCEDURE 
-%token BBEGIN 
+%token _BEGIN 
 %token END 
 %token WHILE 
 %token DO 
@@ -46,10 +44,10 @@ char* latestRule;
 %token NOT_EQUAL 
 %token ASSIGN 
 
-%token POINT 
+%token DOT 
 %token COMMA 
 %token SEMICOLON 
-%token DOUBLE_POINT 
+%token COLON 
 
 %token PLUS 
 %token MINUS 
@@ -65,105 +63,126 @@ char* latestRule;
 %token BRACKET_ROUND_CLOSE 
 %token BRACKET_SQUARE_OPEN 
 %token BRACKET_SQUARE_CLOSE 
-%token BRACKET_CURLY_OPEN 
-%token BRACKET_CURLY_CLOSE 
 
-%token NUMBER 
-%token IDENTIFIER 
+%token NUM 
+%token IDENT 
 %token ERROR
 
 %%
 
-start : PROGRAM IDENTIFIER SEMICOLON varDec subProgList compStmt POINT
+start   : PROGRAM IDENT SEMICOLON varDec subProgList compStmt DOT
+        ;
 
 varDec : VAR varDecList
         | 
+        ; 
 
-varDecList  : identListType SEMICOLON varDecList
-            | 
+varDecList      : identListType SEMICOLON varDecList
+                ;
 
-identListType : identList DOUBLE_POINT type
+identListType   : identList COLON type
+                ;
 
-identList : IDENTIFIER 
-            | IDENTIFIER COMMA identList
+identList       : IDENT 
+                | IDENT COMMA identList
+                ;
 
-subProgList : subProgHead varDec compStmt SEMICOLON subProgList
-            | 
+subProgList     : subProgHead varDec compStmt SEMICOLON subProgList
+                | 
+                ;
 
-varDecList  : identListType SEMICOLON varDecList
-            |  
+varDecList      : identListType SEMICOLON varDecList
+                |  
+                ;
 
-compStmt : BBEGIN stmtList END
+compStmt        : _BEGIN stmtList END
+                |
 
-stmtList    : statement
-            | statement SEMICOLON stmtList
+stmtList        : statement
+                | statement SEMICOLON stmtList
+                ;
 
+subProgHead     : FUNCTION IDENT args COLON type SEMICOLON
+                | PROCEDURE IDENT args SEMICOLON
+                ;
 
-subProgHead : FUNCTION IDENTIFIER args DOUBLE_POINT type SEMICOLON
-            | PROCEDURE IDENTIFIER args SEMICOLON
-    
+type    : simpleType
+        | ARRAY BRACKET_SQUARE_OPEN NUM DOT DOT NUM BRACKET_SQUARE_CLOSE OF simpleType
+        ;
 
-type : simpleType
-     | ARRAY BRACKET_SQUARE_OPEN NUMBER POINT POINT NUMBER BRACKET_SQUARE_CLOSE OF simpleType
-
-args : BRACKET_ROUND_OPEN parList BRACKET_ROUND_CLOSE
-      | 
-
-statement : procCall
-        | assignStmt
-        | compStmt
-        | ifStmt
-        | whileStmt
-
-ifStmt : IF expr THEN statement elsePart
-
-elsePart : ELSE statement
+args    : BRACKET_ROUND_OPEN parList BRACKET_ROUND_CLOSE
         | 
+        ;
 
-simpleType : INTEGER 
-            | BOOLEAN
-            | REAL
+statement       : procCall
+                | assignStmt
+                | compStmt
+                | ifStmt
+                | whileStmt
+                ;
 
-expr : simpleExpr
-     | simpleExpr relOp simpleExpr 
+ifStmt  : IF expr THEN statement elsePart
+        ;
 
-simpleExpr : term
-            | term addOp term 
+elsePart        : ELSE statement
+                | 
+                ;
 
-term : factor
-     | factor mulOp term
+simpleType      : INTEGER 
+                | BOOLEAN
+                | REAL
+                ;
 
+expr    : simpleExpr
+        | simpleExpr relOp simpleExpr 
+        ;
 
-factor : NUMBER
+simpleExpr      : term
+                | simpleExpr addOp term 
+                ;
+
+term    : factor
+        | term mulOp factor
+        ;
+
+factor  : NUM
         | FALSE
         | TRUE
-        | IDENTIFIER
-        | IDENTIFIER index
-        | IDENTIFIER params
+        | IDENT
+        | IDENT index
+        | IDENT params
         | MINUS factor
         | BRACKET_ROUND_OPEN expr BRACKET_ROUND_CLOSE
+        ;
 
-params : BRACKET_ROUND_OPEN exprList BRACKET_ROUND_CLOSE
+params  : BRACKET_ROUND_OPEN exprList BRACKET_ROUND_CLOSE
+        ;
 
-index : BRACKET_SQUARE_OPEN expr BRACKET_SQUARE_CLOSE 
-      | BRACKET_SQUARE_OPEN expr POINT POINT expr BRACKET_SQUARE_CLOSE
+index   : BRACKET_SQUARE_OPEN expr BRACKET_SQUARE_CLOSE 
+        | BRACKET_SQUARE_OPEN expr DOT DOT expr BRACKET_SQUARE_CLOSE
+        ;
 
 exprList : expr
          | expr COMMA exprList
-            
+         ;   
 
 parList : identListType
         | identListType SEMICOLON parList
+        ;
 
-procCall : IDENTIFIER
-        | IDENTIFIER params
+procCall : IDENT
+         | IDENT params
+         ;
 
-whileStmt : WHILE expr DO statement
+whileStmt       : WHILE expr DO statement
+                ;
 
-assignStmt : IDENTIFIER assignment
+assignStmt      : IDENT assignment
+                ;
 
-assignment : ASSIGN expr
-            | index ASSIGN expr
+assignment      : ASSIGN expr
+                | index ASSIGN expr
+                ;
 
 relOp : GREATER
         | LESS
@@ -171,16 +190,19 @@ relOp : GREATER
         | EQUAL_LESS
         | EQUAL
         | NOT_EQUAL
+        ;
 
 addOp : PLUS 
         | MINUS
         | OR
+        ;
 
 mulOp : MULT 
         | DIV_MATH 
         | DIV_TEXT
         | DIV
         | AND
+        ;
 
 %%
 

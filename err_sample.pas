@@ -10,7 +10,7 @@ program minipas;
 
   function gcd (a, b: integer) : integer;
   begin
-    while a*b <> 0+3-5 do
+    while a*b <> 0+5 do
     begin
       if a > b then
         a := a-b

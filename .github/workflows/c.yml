@@ -1,0 +1,23 @@
+name: C CI
+
+on:
+  push:
+    branches: [native_c]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup Environment
+      run: |
+      sudo apt install flex bison
+    - name: Compile Program
+      run: |
+      make compile
+    - name: Run Test [Success]
+      run: |
+      make test_success
+    - name: Run Test [Error]
+      run: |
+      make test_error

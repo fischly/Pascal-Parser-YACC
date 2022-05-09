@@ -11,8 +11,8 @@ newline     [\n]+
 tab         [\t]+
 whitespace  [ ]+
 comment     \{.*\}
-number      [0-9]+(\.[0-9]+)?
-identifier  [_a-zA-Z][_a-zA-Z0-9]*
+num      [0-9]+(\.[0-9]+)?
+ident       [_a-zA-Z][_a-zA-Z0-9]*
 
 %%
 
@@ -28,7 +28,7 @@ identifier  [_a-zA-Z][_a-zA-Z0-9]*
 "of"            { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return OF; }
 "function"      { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return FUNCTION; }
 "procedure"     { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return PROCEDURE; }
-"begin"         { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return BBEGIN; }
+"begin"         { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return _BEGIN; }
 "end"           { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return END; }
 "while"         { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return WHILE; }
 "do"            { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return DO; }
@@ -50,10 +50,10 @@ identifier  [_a-zA-Z][_a-zA-Z0-9]*
 "<>"            { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return NOT_EQUAL; }
 ":="            { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return ASSIGN; }
 
-"."             { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return POINT; }
+"."             { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return DOT; }
 ","             { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return COMMA; }
 ";"             { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return SEMICOLON; }
-":"             { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return DOUBLE_POINT; }
+":"             { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return COLON; }
 
 "+"             { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return PLUS; }
 "-"             { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return MINUS; }
@@ -68,11 +68,9 @@ identifier  [_a-zA-Z][_a-zA-Z0-9]*
 ")"             { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return BRACKET_ROUND_CLOSE; }
 "["             { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return BRACKET_SQUARE_OPEN; }
 "]"             { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return BRACKET_SQUARE_CLOSE; }
-"{"             { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return BRACKET_CURLY_OPEN; }
-"}"             { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return BRACKET_CURLY_CLOSE; }
 
-{number}        { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return NUMBER;}
-{identifier}    { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return IDENTIFIER; }
+{num}        { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return NUM;}
+{ident}         { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return IDENT; }
 
 .               { printf("(%02d | %02d - %02d) LEX::[%s]\n", yylineno, position, position+yyleng, yytext); position += yyleng; return ERROR;}
 
