@@ -12,4 +12,4 @@ jobs:
       - name: Setup Environment
         run: sudo apt install flex bison g++
       - name: Execute Program
-        run: make
+        run: make all
