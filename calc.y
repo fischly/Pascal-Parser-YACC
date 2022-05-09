@@ -3,14 +3,7 @@
     #include <iostream>
     #include <string>
 
-    #include "AST/Token.h"
-    #include "AST/Expression.h"
-    #include "AST/Statement.h"
-    #include "AST/Variable.h"
-    #include "AST/Method.h"
-    #include "AST/Program.h"
-    #include "AST/Visitors/AST2Text.h"
-
+    #include "Token.h"
 
     void yyerror(const char* msg);
 
@@ -19,9 +12,6 @@
     extern int yylineno;
     extern char* yytext;
     extern FILE *yyin;
-
-    // variable to hold the expression AST temporarily
-    Program* result;
 %}
 
 %locations
@@ -29,25 +19,9 @@
 %union {
   int num;
   Token* token;
-  std::vector<Token*>* tokenList;
-
-  Expr::Expression* expression;
-  std::vector<Expr::Expression*>* expressionList;
-
-  Stmt::Statement* statement;
-  std::vector<Stmt::Statement*>* statementList;
-
-  Variable::VariableType* variableType;
-  std::vector<Variable*>* variableList;
-
-  Method* method;
-  std::vector<Method*>* methodList;
-
-  Program* program;
-
 } 
 
-%start store     /* denotes the starting rule */
+%start start     /* denotes the starting rule */
 
 /* ========================= TOKENS ========================= */
 
@@ -61,24 +35,22 @@
 %token BRACKETS_OPEN BRACKETS_CLOSING SQUARE_OPEN SQUARE_CLOSING
 
 /* Data types */
-%token <token> INTEGER REAL BOOLEAN ARRAY
+%token INTEGER REAL BOOLEAN ARRAY
 
 /* Operators */
-%token <token> OP_ASSIGNMENT 
-%token <token> OP_NOT
-%token <token> OP_EQUALS OP_NOT_EQUALS OP_LESS OP_LESS_EQUAL OP_GREATER OP_GREATER_EQUAL
-%token <token> OP_ADD OP_SUB OP_MUL OP_DIV OP_INTEGER_DIV
-%token <token> OP_AND OP_OR
+%token OP_ASSIGNMENT 
+%token OP_NOT
+%token OP_EQUALS OP_NOT_EQUALS OP_LESS OP_LESS_EQUAL OP_GREATER OP_GREATER_EQUAL
+%token OP_ADD OP_SUB OP_MUL OP_DIV OP_INTEGER_DIV
+%token OP_AND OP_OR
 
 /* Literals */
-%token <token> LITERAL_INTEGER LITERAL_REAL LITERAL_STRING LITERAL_TRUE LITERAL_FALSE
+%token LITERAL_INTEGER LITERAL_REAL LITERAL_STRING LITERAL_TRUE LITERAL_FALSE
 
 /* Identifier */
-%token <token> IDENTIFIER
+%token IDENTIFIER
 
 %%
-
-store       : start
 
 /* =========================================================== */
 /* ==================== Program grammar ====================== */

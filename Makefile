@@ -5,11 +5,11 @@ testyacc:
 	g++ -o testcalc.o lex.yy.c calc.tab.c
 
 	@echo 
-	@echo "Testing correct file (shouldn't produce output): "
+	@echo "Testing correct file (shouldn't produce syntax error): "
 	cat test.pas | ./testcalc.o
 
 	@echo
-	@echo "Testing wrong file (should produce error): "
+	@echo "Testing wrong file (should produce syntax error): "
 	cat test-wrong.pas | ./testcalc.o
 
 

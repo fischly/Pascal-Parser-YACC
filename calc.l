@@ -5,12 +5,7 @@
     extern "C" int yylex();
 
     #include <iostream>
-    #include "AST/Token.h"
-    #include "AST/Expression.h"
-    #include "AST/Statement.h"
-    #include "AST/Variable.h"
-    #include "AST/Method.h"
-    #include "AST/Program.h"
+    #include "Token.h"
 
     #include "calc.tab.h"
 
@@ -119,14 +114,5 @@ false               { ACCEPT(TokenType::LITERAL_FALSE); }
 .                   { PRINT_ERROR_SYMBOL(yytext); } /* everything else that was not recognized yet, must be erroneous */
 
 %%
-
-    // "+"                 {ACCEPT(yytokentype::OP_ADD);}
-    // [a-zA-Z]            {yylval.id = yytext[0]; ACCEPT(yytokentype::IDENTIFIER); }
-    // [0-9]+              {yylval.num = atoi(yytext); ACCEPT(yytokentype::LITERAL_INTEGER);}
-    // [ \t\n]             ;
-    // [-+=;]              {ACCEPT(yytext[0]);}
-    // .                   {ECHO; yyerror("unexpected character");}
-
-    // %%
 
 int yywrap (void) { return 1; }
