@@ -1,14 +1,21 @@
 
 #include <iostream>
+#include <chrono>
 
 extern int yyparse();
 
-int main(void){
+using namespace std;
 
-    std::cout << "Parsing new File" << std::endl;
+int main(void){
+    cout << "+--------------------------------------------------------------------------------------------+" << endl;
+    cout << "Parsing new File" << endl;
+    auto start = chrono::high_resolution_clock::now();
 
     yyparse();
+    auto stop = chrono::high_resolution_clock::now();
+    auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
 
-    std::cout << "Parsed new File" << std::endl;
-
+    cout << "Parsed new File" << endl;
+    cout << "\tExecution time: " << duration.count() << " microseconds" << endl;
+    cout << "+--------------------------------------------------------------------------------------------+" << endl << endl;
 }

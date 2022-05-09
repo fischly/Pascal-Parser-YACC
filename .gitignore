@@ -9,3 +9,5 @@
 **/*.code-workspace
 
 **.o
+
+.vscode

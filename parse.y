@@ -2,7 +2,7 @@
 #include <iostream>
 #include <string>
 
-void yyerror(char *s);
+void yyerror(const char *s);
 
 extern int yylex();
 extern int yylineno;
@@ -212,6 +212,8 @@ exprList    : exprList COMMA expr
 
 %%
 
-void yyerror(char* msg){
-  std::cerr << "Error at line " << yylineno << ": " << msg << "\n" << std::endl;
+void yyerror(const char* msg){
+    printf("! Error parsing tokens: %s", msg);
+    printf(" in Line %d, Position %d - %d\n", yylineno, position, position+yyleng);
+    printf("\tCould not resolve [%s]\n", yytext);
 }
