@@ -9,13 +9,12 @@ gcc:
 
 test-all: test-success test-error
 test-success:
-	./out.o < sample.pas
+	./out.o < test/sample.pas
 test-error:
-	./out.o < err_sample.pas
+	./out.o < test/err_sample.pas
 
 
 all: compile test-all
-
 
 clean:
 	rm out.o parse.tab.c parse.tab.h lex.yy.c

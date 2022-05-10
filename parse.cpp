@@ -7,7 +7,7 @@ extern int yyparse();
 using namespace std;
 
 int main(void){
-    cout << "+--------------------------------------------------------------------------------------------+" << endl;
+    cout << "+-------------------------------------------------------------------+" << endl;
     cout << "Parsing new File" << endl;
     auto start = chrono::high_resolution_clock::now();
 
@@ -16,6 +16,6 @@ int main(void){
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
 
     cout << "Parsed new File" << endl;
-    cout << "\tExecution time: " << duration.count() << " microseconds" << endl;
-    cout << "+--------------------------------------------------------------------------------------------+" << endl << endl;
+    cout << "\tExecution time: " << duration.count() << " ms " << endl;
+    cout << "+-------------------------------------------------------------------+" << endl << endl;
 }
