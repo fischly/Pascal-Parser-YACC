@@ -129,4 +129,4 @@ false               { ACCEPT(TokenType::LITERAL_FALSE); }
 
     // %%
 
-    // int yywrap (void) {ACCEPT(1);}
+int yywrap (void) { return 1; }
