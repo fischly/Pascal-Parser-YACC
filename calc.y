@@ -255,6 +255,10 @@ int main (void)
   // start parser
   yyparse();
 
+  if (result == nullptr) {
+      return 0;
+  }
+
   // initialize AST printer and start accepting the expression
   AST2Text ast2text;
   result->accept(&ast2text);
