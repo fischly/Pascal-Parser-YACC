@@ -242,7 +242,7 @@ mulOp       : OP_MUL                                            { }
             | OP_AND                                            { }
 
 
-exprList    : exprList COMMA expr                               { $$ = $1; $$->insert($$->end(), $1->begin(), $1->end()); $$->push_back($3); }
+exprList    : exprList COMMA expr                               { $$ = $1; $$->push_back($3); }
             | expr                                              { $$ = new std::vector<Expr::Expression*>(); $$->push_back($1); }
             ;
 
