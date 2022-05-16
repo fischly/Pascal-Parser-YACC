@@ -11,18 +11,18 @@ compile:
 test-success:
 	@echo 
 	@echo "Testing correct file (shouldn't produce syntax error): "
-	cat test.pas | ./testcalc.o
+	cat test-code/test.pas | ./testcalc.o
 
 test-failure:
 	@echo
 	@echo "Testing wrong file (should produce syntax error): "
-	cat test-wrong.pas | ./testcalc.o
+	cat test-code/test-wrong.pas | ./testcalc.o
 
 test-AST-printing:
 	@echo
 	@echo "Testing AST printing: "
 
-	cat test.pas             | ./testcalc.o > parsed-tree-run1.pas
+	cat test-code/test.pas   | ./testcalc.o > parsed-tree-run1.pas
 	cat parsed-tree-run1.pas | ./testcalc.o > parsed-tree-run2.pas
 
 	@echo 
