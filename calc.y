@@ -26,24 +26,23 @@
 %locations
 
 %union {
-  int num;
-  Token* token;
-  std::vector<Token*>* tokenList;
+    int num;
+    Token* token;
+    std::vector<Token*>* tokenList;
 
-  Expr::Expression* expression;
-  std::vector<Expr::Expression*>* expressionList;
+    Expr::Expression* expression;
+    std::vector<Expr::Expression*>* expressionList;
 
-  Stmt::Statement* statement;
-  std::vector<Stmt::Statement*>* statementList;
+    Stmt::Statement* statement;
+    std::vector<Stmt::Statement*>* statementList;
 
-  Variable::VariableType* variableType;
-  std::vector<Variable*>* variableList;
+    Variable::VariableType* variableType;
+    std::vector<Variable*>* variableList;
 
-  Method* method;
-  std::vector<Method*>* methodList;
+    Method* method;
+    std::vector<Method*>* methodList;
 
-  Program* program;
-
+    Program* program;
 } 
 
 %start store     /* denotes the starting rule */
@@ -103,12 +102,12 @@ start       : PROGRAM IDENTIFIER SEMICOLON
               varDec subProgList compStmt DOT                 { $$ = new Program($2, $4, $5, static_cast<Stmt::Block*>($6)); }
             ;
 
-varDec      : VAR varDecList                                  { $$ = $2; }
-            | /* epsilon */                                   { $$ = new std::vector<Variable*>(); }
+varDec      : VAR varDecList                                  { }
+            | /* epsilon */                                   { }
             ;
 
-varDecList  : varDecList identListType SEMICOLON              { $$ = $1; std::copy($2->begin(), $2->end(), std::back_inserter(*$$)); }
-            | identListType SEMICOLON                         { $$ = $1; }
+varDecList  : varDecList identListType SEMICOLON              { }
+            | identListType SEMICOLON                         { }
             ;
 
 identListType : identList COLON type                          { $$ = new std::vector<Variable*>(); for (const auto token : *$1) { $$->push_back(new Variable(token, $3)); } }
@@ -214,6 +213,7 @@ factor      : LITERAL_INTEGER                                   { $$ = new Expr:
 
             | IDENTIFIER                                        { $$ = new Expr::Identifier($1, NULL); }
             | IDENTIFIER SQUARE_OPEN expr SQUARE_CLOSING        { $$ = new Expr::Identifier($1, $3); }
+            
             | IDENTIFIER BRACKETS_OPEN exprList BRACKETS_CLOSING { $$ = new Expr::Call($1, $3); }
 
             | OP_NOT factor                                     { $$ = new Expr::Unary($1, $2); }
