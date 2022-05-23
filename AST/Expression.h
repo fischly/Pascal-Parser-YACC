@@ -6,28 +6,10 @@
 #include "Token.h"
 
 namespace Expr {
-    /* forward declarations */
-    class Binary; class Call; class Grouping;
-    class Identifier; class Literal; class Unary;
-
-    /* expression visitor */
-    class Visitor {
-    public:
-        virtual ~Visitor() = default;
-
-        virtual void visitBinary(Binary* expr) {};
-        virtual void visitCall(Call* expr) {};
-        virtual void visitGrouping(Grouping* expr) {};
-        virtual void visitIdentifier(Identifier* expr) {};
-        virtual void visitLiteral(Literal* expr) {};
-        virtual void visitUnary(Unary* expr) {};
-    };
-
     /* Base class for all expressions */
     class Expression {
     public:
         virtual ~Expression() = default;
-        virtual void accept(Visitor* visitor) = 0;
     };
     
 
@@ -45,8 +27,6 @@ namespace Expr {
         Expression* left;
         Token* op;
         Expression* right;
-
-        void accept(Visitor* visitor) { visitor->visitBinary(this); }
     };
 
     class Call : public Expression {
@@ -62,8 +42,6 @@ namespace Expr {
 
         Token* callee;
         std::vector<Expression*>* arguments;
-
-        void accept(Visitor* visitor) { visitor->visitCall(this); }
     };
 
     class Grouping : public Expression {
@@ -72,8 +50,6 @@ namespace Expr {
         ~Grouping() { delete expression; }
         
         Expression* expression;
-
-        void accept(Visitor* visitor) { visitor->visitGrouping(this); }
     };
 
     class Identifier : public Expression {
@@ -84,8 +60,6 @@ namespace Expr {
 
         Token* token;
         Expression* arrayIndexExpression;
-
-        void accept(Visitor* visitor) { visitor->visitIdentifier(this); }
     };
 
     class Literal : public Expression {
@@ -94,8 +68,6 @@ namespace Expr {
         ~Literal() { }
         
         Token* token;
-
-        void accept(Visitor* visitor) { visitor->visitLiteral(this); }
     };
 
     class Unary : public Expression {
@@ -105,8 +77,6 @@ namespace Expr {
 
         Token* op;
         Expression* right;
-
-        void accept(Visitor* visitor) { visitor->visitUnary(this); }
     };
 
 }

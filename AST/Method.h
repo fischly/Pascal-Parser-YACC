@@ -9,15 +9,6 @@
 
 class Method {
 public:
-    /* method visitor */
-    class Visitor {
-    public:
-        virtual ~Visitor() = default;
-
-        virtual void visitMethod(Method* method) {};
-    };
-
-
     Method(Token* identifier,
            std::vector<Variable*>* arguments, 
            std::vector<Variable*>* declarations, 
@@ -46,6 +37,4 @@ public:
     std::vector<Variable*>* declarations;
     Stmt::Block* block;
     Variable::VariableType* returnType;
-
-    void accept(Visitor* visitor) { visitor->visitMethod(this); }
 };

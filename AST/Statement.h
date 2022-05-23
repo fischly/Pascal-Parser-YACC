@@ -9,27 +9,10 @@
 using Expr::Expression;
 
 namespace Stmt {
-    /* forward declarations */
-    class Assignment; class Call; class If; class While; class Block;
-
-     /* statement visitor */
-    class Visitor {
-    public:
-        virtual ~Visitor() = default;
-
-        virtual void visitAssignment(Assignment* stmt) {};
-        virtual void visitCall(Call* stmt) {};
-        virtual void visitIf(If* stmt) {};
-        virtual void visitWhile(While* stmt) {};
-        virtual void visitBlock(Block* stmt) {};
-    };
-
-
     /* Base class */
     class Statement {
     public:
         virtual ~Statement() = default;
-        virtual void accept(Visitor* visitor) = 0;
     };
 
     /* different types of statements */
@@ -46,8 +29,6 @@ namespace Stmt {
         Token* identifier;
         Expression* arrayIndex;
         Expression* value;
-
-        void accept(Visitor* visitor) { visitor->visitAssignment(this); }
     };
 
     class Call : public Statement {
@@ -64,8 +45,6 @@ namespace Stmt {
 
         Token* callee;
         std::vector<Expression*>* arguments;
-
-        void accept(Visitor* visitor) { visitor->visitCall(this); }
     };
 
     class If : public Statement {
@@ -82,9 +61,6 @@ namespace Stmt {
         Expression* condition;
         Statement* thenBody;
         Statement* elseBody;
-
-        void accept(Visitor* visitor) { visitor->visitIf(this); }
-
     };
 
     class While : public Statement {
@@ -99,8 +75,6 @@ namespace Stmt {
 
         Expression* condition;
         Statement* body;
-
-        void accept(Visitor* visitor) { visitor->visitWhile(this); }
     };
 
     class Block : public Statement {
@@ -116,8 +90,6 @@ namespace Stmt {
         }
 
         std::vector<Statement*>* statements;
-
-        void accept(Visitor* visitor) { visitor->visitBlock(this); }
     };
 
 };

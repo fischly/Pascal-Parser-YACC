@@ -9,7 +9,6 @@
     #include "AST/Variable.h"
     #include "AST/Method.h"
     #include "AST/Program.h"
-    #include "AST/Visitors/AST2Text.h"
 
 
     void yyerror(const char* msg);
@@ -259,13 +258,8 @@ int main (void)
       return 0;
   }
 
-  // initialize AST printer and start accepting the expression
-  AST2Text ast2text;
-  result->accept(&ast2text);
-
   // output printer result to stdout
-  std::cout << ast2text.getResult() << std::endl;
-
+  std::cout << "Success!" << std::endl;
 }
 
 void yyerror(const char* msg)
