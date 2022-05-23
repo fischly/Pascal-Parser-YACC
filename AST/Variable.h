@@ -36,7 +36,6 @@ public:
 
 
     Variable(Token* name, VariableType* type) : name{name}, type{type} {}
-    ~Variable() {  }
 
     Token* name;
     VariableType* type;

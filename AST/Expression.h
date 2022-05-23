@@ -19,10 +19,6 @@ namespace Expr {
         Binary(Expression* left, Token* op, Expression* right) 
             : left{left}, op{op}, right{right}
         {}
-        ~Binary() {
-            delete left;
-            delete right;
-        }
 
         Expression* left;
         Token* op;
@@ -34,11 +30,6 @@ namespace Expr {
         Call(Token* callee, std::vector<Expression*>* arguments)
             : callee{callee}, arguments{arguments}
         {}
-        ~Call() {
-            for (auto& arg : *arguments) {
-                delete arg;
-            }
-        }
 
         Token* callee;
         std::vector<Expression*>* arguments;
@@ -47,7 +38,6 @@ namespace Expr {
     class Grouping : public Expression {
     public:
         Grouping(Expression* expression) : expression{expression} {}
-        ~Grouping() { delete expression; }
         
         Expression* expression;
     };
@@ -56,7 +46,6 @@ namespace Expr {
     public:
         Identifier(Token* token, Expression* arrayIndexExpression) 
             : token{token}, arrayIndexExpression{arrayIndexExpression} {}
-        ~Identifier() { delete arrayIndexExpression; }
 
         Token* token;
         Expression* arrayIndexExpression;
@@ -65,7 +54,6 @@ namespace Expr {
     class Literal : public Expression {
     public:
         Literal(Token* token) : token{token} {}
-        ~Literal() { }
         
         Token* token;
     };
@@ -73,7 +61,6 @@ namespace Expr {
     class Unary : public Expression {
     public:
         Unary(Token* op, Expression* right) : op{op}, right{right} {}
-        ~Unary() { delete right; }
 
         Token* op;
         Expression* right;

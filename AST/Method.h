@@ -16,21 +16,6 @@ public:
            Variable::VariableType* returnType)
         : identifier{identifier}, arguments{arguments}, declarations{declarations}, block{block}, returnType{returnType}
     {}
-    ~Method() {
-        for (auto& arg : *arguments) {
-            delete arg;
-        }
-
-        for (auto& decl : *declarations) {
-            delete decl;
-        }
-
-        delete arguments;
-        delete declarations;
-
-        delete block;
-        delete returnType;
-    }
 
     Token* identifier;
     std::vector<Variable*>* arguments;
