@@ -13,6 +13,9 @@ test-success:
 test-error:
 	./out.o < test/err_sample.pas
 
+sym:
+	g++ testing_symtab.cpp 
+	./a.out
 
 all: compile test-all
 

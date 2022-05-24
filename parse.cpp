@@ -19,4 +19,5 @@ int main(void){
     cout << "Parsed new File" << endl;
     cout << "\tExecution time: " << duration.count() << " ms " << endl;
     cout << "+-------------------------------------------------------------------+" << endl << endl;
+    return 0;
 }

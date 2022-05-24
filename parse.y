@@ -1,4 +1,5 @@
 %{
+    
 #include <iostream>
 #include <string>
 
@@ -217,3 +218,5 @@ void yyerror(const char* msg){
     printf(" in Line %d, Position %d - %d\n", yylineno, position, position+yyleng);
     printf("\tCould not resolve [%s]\n", yytext);
 }
+
+// Where do you store the tree?
