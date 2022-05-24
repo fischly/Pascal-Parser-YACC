@@ -91,15 +91,15 @@ public:
         // and call the according function afterwards
         if (Stmt::Assignment* assignStmt = dynamic_cast<Stmt::Assignment*>(stmt)) {
             printAssignmentStmt(assignStmt);
+        } else if (Stmt::Block* blockStmt = dynamic_cast<Stmt::Block*>(stmt)) {
+            printBlockStmt(blockStmt);
         } else if (Stmt::Call* callStmt = dynamic_cast<Stmt::Call*>(stmt)) {
             printCallStmt(callStmt);
         } else if (Stmt::If* ifStmt = dynamic_cast<Stmt::If*>(stmt)) {
             printIfStmt(ifStmt);
         } else if (Stmt::While* whileStmt = dynamic_cast<Stmt::While*>(stmt)) {
             printWhileStmt(whileStmt);
-        } else if (Stmt::Block* blockStmt = dynamic_cast<Stmt::Block*>(stmt)) {
-            printBlockStmt(blockStmt);
-        }
+        } 
     }
 
     void printAssignmentStmt(Stmt::Assignment* stmt) {
@@ -115,6 +115,22 @@ public:
         cout << " := ";
         // the "right" side of the assignment
         printExpr(stmt->value);
+    }
+
+    
+    void printBlockStmt(Stmt::Block* stmt) {
+        cout << "\nbegin";
+        // print each statement that is contained in this block
+        for (auto const& stmtInside : *stmt->statements) {
+            cout << "\n";
+            printStmt(stmtInside);
+
+            // print seperating ; if not last statement
+            if (stmtInside != stmt->statements->back()) {
+                cout << ";";
+            }
+        }
+        cout << "\nend\n";
     }
 
     void printCallStmt(Stmt::Call* stmt) {
@@ -152,20 +168,6 @@ public:
         printStmt(stmt->body);
     }
 
-    void printBlockStmt(Stmt::Block* stmt) {
-        cout << "\nbegin";
-        // print each statement that is contained in this block
-        for (auto const& stmtInside : *stmt->statements) {
-            cout << "\n";
-            printStmt(stmtInside);
-
-            // print seperating ; if not last statement
-            if (stmtInside != stmt->statements->back()) {
-                cout << ";";
-            }
-        }
-        cout << "\nend\n";
-    }
 
 
     /* ------------------------------------------------ */
