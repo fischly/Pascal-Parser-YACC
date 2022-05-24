@@ -10,6 +10,8 @@
     #include "AST/Method.h"
     #include "AST/Program.h"
 
+    #include "AST/ASTPrinter.h"
+
 
     void yyerror(const char* msg);
 
@@ -102,12 +104,12 @@ start       : PROGRAM IDENTIFIER SEMICOLON
               varDec subProgList compStmt DOT                 { $$ = new Program($2, $4, $5, static_cast<Stmt::Block*>($6)); }
             ;
 
-varDec      : VAR varDecList                                  { }
-            | /* epsilon */                                   { }
+varDec      : VAR varDecList                                  { $$ = $2; }
+            | /* epsilon */                                   { $$ = new std::vector<Variable*>(); }
             ;
 
-varDecList  : varDecList identListType SEMICOLON              { }
-            | identListType SEMICOLON                         { }
+varDecList  : varDecList identListType SEMICOLON              { $$ = $1; std::copy($2->begin(), $2->end(), std::back_inserter(*$$)); }
+            | identListType SEMICOLON                         { $$ = $1; }
             ;
 
 identListType : identList COLON type                          { $$ = new std::vector<Variable*>(); for (const auto token : *$1) { $$->push_back(new Variable(token, $3)); } }
@@ -171,7 +173,7 @@ assignStmt  : IDENTIFIER OP_ASSIGNMENT expr                     { $$ = new Stmt:
             | IDENTIFIER index OP_ASSIGNMENT expr               { $$ = new Stmt::Assignment($1, $2, $4); }
             ;
 index       : SQUARE_OPEN expr SQUARE_CLOSING                   { $$ = $2; }
-            | SQUARE_OPEN expr RANGE_DOTS expr SQUARE_CLOSING   { $$ = $2; } /* TODO: fix */
+            | SQUARE_OPEN expr RANGE_DOTS expr SQUARE_CLOSING   { $$ = $2; }
             ;
 
 
@@ -213,7 +215,7 @@ factor      : LITERAL_INTEGER                                   { $$ = new Expr:
 
             | IDENTIFIER                                        { $$ = new Expr::Identifier($1, NULL); }
             | IDENTIFIER SQUARE_OPEN expr SQUARE_CLOSING        { $$ = new Expr::Identifier($1, $3); }
-            
+
             | IDENTIFIER BRACKETS_OPEN exprList BRACKETS_CLOSING { $$ = new Expr::Call($1, $3); }
 
             | OP_NOT factor                                     { $$ = new Expr::Unary($1, $2); }
@@ -259,7 +261,8 @@ int main (void)
   }
 
   // output printer result to stdout
-  std::cout << "Success!" << std::endl;
+  ASTPrinter p;
+  p.printProgram(result);
 }
 
 void yyerror(const char* msg)

@@ -18,7 +18,18 @@ test-failure:
 	@echo "Testing wrong file (should produce syntax error): "
 	cat test-code/test-wrong.pas | ./testcalc.o
 
-test-all: test-success test-failure
+test-AST-printing:
+	@echo
+	@echo "Testing AST printing: "
+
+	cat test-code/test.pas   | ./testcalc.o > parsed-tree-run1.pas
+	cat parsed-tree-run1.pas | ./testcalc.o > parsed-tree-run2.pas
+
+	@echo 
+	@echo "Difference between run1 and run2 (if no difference, this means everything worked):"
+	diff parsed-tree-run1.pas parsed-tree-run2.pas
+
+test-all: test-success test-failure test-AST-printing
 
 
 
