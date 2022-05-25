@@ -4,14 +4,8 @@
     #include <string>
 
     #include "AST/Token.h"
-    #include "AST/Expression.h"
-    #include "AST/Statement.h"
-    #include "AST/Variable.h"
-    #include "AST/Method.h"
-    #include "AST/Program.h"
-
     #include "AST/ASTPrinter.h"
-
+    #include "AST/ast_symtab.h"
 
     void yyerror(const char* msg);
 
@@ -22,49 +16,57 @@
     extern FILE *yyin;
 
     // variable to hold the expression AST temporarily
-    Program* result;
+    N_PROG* result;
+
+    // forward declarations
+    N_PROG* create_RootProg(Token* progIdentifier, N_PROG* subProgList, N_STMT* compStmt);
+    N_PROG* create_Prog(Token* progIdentifier, N_PROG* subProgList, N_STMT* compStmt);
+
+    N_STMT* create_AssignmentStmt(Token* identifier, N_EXPR* indexExpr, N_EXPR* rhs);
+    N_STMT* create_IfStmt(N_EXPR* condition, N_STMT* then_part, N_STMT* else_part);
+    N_STMT* create_WhileStmt(N_EXPR* condition, N_STMT* body);
+    N_STMT* create_CallStmt(Token* identifierToken, N_EXPR* par_list);
+    N_STMT* create_Stmt(N_STMT::eN_STMT_TYPE type, N_ASSIGN* assign_stmt, N_IF* if_stmt, N_WHILE* while_stmt, N_CALL* proc_call);
+    void appendStmtToStmtList(N_STMT* stmtList, N_STMT* stmt);
+
+
+    N_EXPR* create_LiteralExpr(Token* literalToken);
+    N_EXPR* create_IdentifierExpr(Token* identifierToken, N_EXPR* indexExpr);
+    N_EXPR* create_OPExpr(N_EXPR* left, Token* op, N_EXPR* right);
+    N_EXPR* create_CallExpr(Token* funcToken, N_EXPR* parList);
+    void appendExprToExprList(N_EXPR* exprList, N_EXPR* expr);
 %}
 
+%define parse.error verbose
 %locations
 
 %union {
     int num;
     Token* token;
-    std::vector<Token*>* tokenList;
 
-    Expr::Expression* expression;
-    std::vector<Expr::Expression*>* expressionList;
-
-    Stmt::Statement* statement;
-    std::vector<Stmt::Statement*>* statementList;
-
-    Variable::VariableType* variableType;
-    std::vector<Variable*>* variableList;
-
-    Method* method;
-    std::vector<Method*>* methodList;
-
-    Program* program;
-} 
+    N_EXPR* expression;
+    N_STMT* statement;
+    N_PROG* program;
+}
 
 %start store     /* denotes the starting rule */
 
 /* ========================= TOKENS ========================= */
 
 /* Keywords */
-%token PROGRAM FUNCTION PROCEDURE BEGIN_ END_ 
+%token PROGRAM FUNCTION PROCEDURE BEGIN_ END_
 %token IF THEN ELSE DO WHILE
 %token VAR OF
 
 /* Syntactical symbols */
 %token COMMA COLON SEMICOLON DOT RANGE_DOTS
-%token BRACKETS_OPEN BRACKETS_CLOSING SQUARE_OPEN SQUARE_CLOSING
+%token <token> BRACKETS_OPEN BRACKETS_CLOSING SQUARE_OPEN SQUARE_CLOSING
 
 /* Data types */
 %token <token> INTEGER REAL BOOLEAN ARRAY
 
 /* Operators */
-%token <token> OP_ASSIGNMENT 
+%token <token> OP_ASSIGNMENT
 %token <token> OP_NOT
 %token <token> OP_EQUALS OP_NOT_EQUALS OP_LESS OP_LESS_EQUAL OP_GREATER OP_GREATER_EQUAL
 %token <token> OP_ADD OP_SUB OP_MUL OP_DIV OP_INTEGER_DIV
@@ -80,49 +82,45 @@
 
 /* ========================= TYPING ========================= */
 
-%type <token> relOp addOp mulOp simpleType 
-%type <expression> factor term simpleExpr expr index
-%type <expressionList> exprList params
-%type <statement> statement procCall assignStmt compStmt ifStmt whileStmt
-%type <statementList> stmtList
-%type <variableType> type
-%type <variableList> varDec varDecList identListType parList args
-%type <method> subProgHead
-%type <methodList> subProgList
-%type <tokenList> identList
-%type <program> start
+
+%type <token> relOp addOp mulOp simpleType subProgHead
+%type <expression> factor term simpleExpr expr index exprList params
+%type <statement> statement procCall assignStmt compStmt ifStmt whileStmt stmtList
+%type <program> subProgList start
 
 %%
 
+
 store       : start { result = $1; }
+
 
 /* =========================================================== */
 /* ==================== Program grammar ====================== */
 /* =========================================================== */
 
 start       : PROGRAM IDENTIFIER SEMICOLON 
-              varDec subProgList compStmt DOT                 { $$ = new Program($2, $4, $5, static_cast<Stmt::Block*>($6)); }
+              varDec subProgList compStmt DOT                 { $$ = create_RootProg($2, $5, $6); }
             ;
 
-varDec      : VAR varDecList                                  { $$ = $2; }
-            | /* epsilon */                                   { $$ = new std::vector<Variable*>(); }
+varDec      : VAR varDecList                                  { }
+            | /* epsilon */                                   { }
             ;
 
-varDecList  : varDecList identListType SEMICOLON              { $$ = $1; std::copy($2->begin(), $2->end(), std::back_inserter(*$$)); }
-            | identListType SEMICOLON                         { $$ = $1; }
+varDecList  : varDecList identListType SEMICOLON              { }
+            | identListType SEMICOLON                         { }
             ;
 
-identListType : identList COLON type                          { $$ = new std::vector<Variable*>(); for (const auto token : *$1) { $$->push_back(new Variable(token, $3)); } }
+identListType : identList COLON type                          { }
               ;
 
-identList   : identList COMMA IDENTIFIER                      { $$ = $1; $$->push_back($3); }
-            | IDENTIFIER                                      { $$ = new std::vector<Token*>(); $$->push_back($1); }
+identList   : identList COMMA IDENTIFIER                      { }
+            | IDENTIFIER                                      { }
             ;
 
-type        : simpleType                                      { $$ = new Variable::VariableTypeSimple($1); }
+type        : simpleType                                      { }
             | ARRAY SQUARE_OPEN 
               LITERAL_INTEGER RANGE_DOTS LITERAL_INTEGER
-              SQUARE_CLOSING OF simpleType                    { $$ = new Variable::VariableTypeArray($8, $3, $5); }
+              SQUARE_CLOSING OF simpleType                    { }
             ;
 
 simpleType  : INTEGER
@@ -130,24 +128,25 @@ simpleType  : INTEGER
             | BOOLEAN
             ;
 
+
 /* =========================================================== */
 /* ===================== Method grammar ====================== */
 /* =========================================================== */
 
-subProgList : subProgList subProgHead varDec compStmt SEMICOLON { $$ = $1; $2->declarations = $3; $2->block = static_cast<Stmt::Block*>($4); $$->push_back($2); }
-            | /* epsilon */                                     { $$ = new std::vector<Method*>(); }
+subProgList : subProgList subProgHead varDec compStmt SEMICOLON { $$ = create_Prog($2, $1, $4); }
+            | /* epsilon */                                     { $$ = NULL; }
             ;
 
-subProgHead : FUNCTION IDENTIFIER args COLON type SEMICOLON     { $$ = new Method($2, $3, nullptr, nullptr, $5); }
-            | PROCEDURE IDENTIFIER args SEMICOLON               { $$ = new Method($2, $3, nullptr, nullptr, nullptr); }
+subProgHead : FUNCTION IDENTIFIER args COLON type SEMICOLON     { $$ = $2; /* for now only return a token for storing the identifier (TODO for next sheet) */  }
+            | PROCEDURE IDENTIFIER args SEMICOLON               { $$ = $2; }
             ;
 
-args        : BRACKETS_OPEN parList BRACKETS_CLOSING            { $$ = $2; }
-            | /* epsilon */                                     { $$ = new std::vector<Variable*>(); }
+args        : BRACKETS_OPEN parList BRACKETS_CLOSING            { }
+            | /* epsilon */                                     { }
             ;
 
-parList     : parList SEMICOLON identListType                   { $$ = $1; std::copy($3->begin(), $3->end(), std::back_inserter(*$$)); }
-            | identListType                                     { $$ = $1; }
+parList     : parList SEMICOLON identListType                   { }
+            | identListType                                     { }
             ;
 
 
@@ -162,66 +161,66 @@ statement   : procCall                                          { $$ = $1; }
             | whileStmt                                         { $$ = $1; }
             ;
 
-procCall    : IDENTIFIER                                        { $$ = new Stmt::Call($1, new std::vector<Expression*>()); }
-            | IDENTIFIER params                                 { $$ = new Stmt::Call($1, $2); }
+procCall    : IDENTIFIER                                        { $$ = create_CallStmt($1, NULL); }
+            | IDENTIFIER params                                 { $$ = create_CallStmt($1, $2); }
             ;
 params      : BRACKETS_OPEN exprList BRACKETS_CLOSING           { $$ = $2; }
             ;
 
 
-assignStmt  : IDENTIFIER OP_ASSIGNMENT expr                     { $$ = new Stmt::Assignment($1, nullptr, $3); }
-            | IDENTIFIER index OP_ASSIGNMENT expr               { $$ = new Stmt::Assignment($1, $2, $4); }
+assignStmt  : IDENTIFIER OP_ASSIGNMENT expr                     { $$ = create_AssignmentStmt($1, NULL, $3); }
+            | IDENTIFIER index OP_ASSIGNMENT expr               { $$ = create_AssignmentStmt($1, $2, $4); }
             ;
 index       : SQUARE_OPEN expr SQUARE_CLOSING                   { $$ = $2; }
             | SQUARE_OPEN expr RANGE_DOTS expr SQUARE_CLOSING   { $$ = $2; }
             ;
 
-
-compStmt    : BEGIN_ stmtList END_                              { $$ = new Stmt::Block($2); }
+compStmt    : BEGIN_ stmtList END_                              { $$ = $2; }
             ;
-stmtList    : stmtList SEMICOLON statement                      { $$ = $1; $$->push_back($3); }
-            | statement                                         { $$ = new std::vector<Stmt::Statement*>(); $$->push_back($1); }
-            ;
-
-
-ifStmt      : IF expr THEN statement                            { $$ = new Stmt::If($2, $4, nullptr); }
-            | IF expr THEN statement ELSE statement             { $$ = new Stmt::If($2, $4, $6); }
+stmtList    : stmtList SEMICOLON statement                      { $$ = $1; appendStmtToStmtList($$, $3); }
+            | statement                                         { $$ = $1; }
             ;
 
-whileStmt   : WHILE expr DO statement                           { $$ = new Stmt::While($2, $4); }
+
+ifStmt      : IF expr THEN statement                            { $$ = create_IfStmt($2, $4, NULL); }
+            | IF expr THEN statement ELSE statement             { $$ = create_IfStmt($2, $4, $6); }
             ;
+
+whileStmt   : WHILE expr DO statement                           { $$ = create_WhileStmt($2, $4); }
+            ;
+
 
 /* =========================================================== */
 /* =================== Expression grammar ==================== */
 /* =========================================================== */
 
-expr        : simpleExpr relOp simpleExpr                       { $$ = new Expr::Binary($1, $2, $3); }
+expr        : simpleExpr relOp simpleExpr                       { $$ = create_OPExpr($1, $2, $3); }
             | simpleExpr                                        { $$ = $1; }
             ;
 
-simpleExpr  : simpleExpr addOp term                             { $$ = new Expr::Binary($1, $2, $3); }
+simpleExpr  : simpleExpr addOp term                             { $$ = create_OPExpr($1, $2, $3); }
             | term                                              { $$ = $1; }
             ;
-    
-term        : term mulOp factor                                 { $$ = new Expr::Binary($1, $2, $3); }
+
+term        : term mulOp factor                                 { $$ = create_OPExpr($1, $2, $3); }
             | factor                                            { $$ = $1; }
             ;
 
-factor      : LITERAL_INTEGER                                   { $$ = new Expr::Literal($1); }
-            | LITERAL_REAL                                      { $$ = new Expr::Literal($1); }
-            | LITERAL_STRING                                    { $$ = new Expr::Literal($1); }
-            | LITERAL_TRUE                                      { $$ = new Expr::Literal($1); }
-            | LITERAL_FALSE                                     { $$ = new Expr::Literal($1); }
+factor      : LITERAL_INTEGER                                   { $$ = create_LiteralExpr($1); }
+            | LITERAL_REAL                                      { $$ = create_LiteralExpr($1); }
+            | LITERAL_STRING                                    { $$ = create_LiteralExpr($1); }
+            | LITERAL_TRUE                                      { $$ = create_LiteralExpr($1); }
+            | LITERAL_FALSE                                     { $$ = create_LiteralExpr($1); }
 
-            | IDENTIFIER                                        { $$ = new Expr::Identifier($1, NULL); }
-            | IDENTIFIER SQUARE_OPEN expr SQUARE_CLOSING        { $$ = new Expr::Identifier($1, $3); }
+            | IDENTIFIER                                        { $$ = create_IdentifierExpr($1, NULL); }
+            | IDENTIFIER SQUARE_OPEN expr SQUARE_CLOSING        { $$ = create_IdentifierExpr($1, $3); }
 
-            | IDENTIFIER BRACKETS_OPEN exprList BRACKETS_CLOSING { $$ = new Expr::Call($1, $3); }
+            | IDENTIFIER BRACKETS_OPEN exprList BRACKETS_CLOSING { $$ = create_CallExpr($1, $3); }
 
-            | OP_NOT factor                                     { $$ = new Expr::Unary($1, $2); }
-            | OP_SUB factor                                     { $$ = new Expr::Unary($1, $2); }
+            | OP_NOT factor                                     { $$ = create_OPExpr($2, $1, NULL); }
+            | OP_SUB factor                                     { $$ = create_OPExpr($2, $1, NULL); }
 
-            | BRACKETS_OPEN expr BRACKETS_CLOSING               { $$ = new Expr::Grouping($2); }
+            | BRACKETS_OPEN expr BRACKETS_CLOSING               { $$ = create_OPExpr($2, new Token(yytokentype::BRACKETS_OPEN, "GROUP", 0), NULL); }
             ;
 
 relOp       : OP_EQUALS                                         { }
@@ -243,29 +242,192 @@ mulOp       : OP_MUL                                            { }
             | OP_AND                                            { }
 
 
-exprList    : exprList COMMA expr                               { $$ = $1; $$->push_back($3); }
-            | expr                                              { $$ = new std::vector<Expr::Expression*>(); $$->push_back($1); }
+exprList    : exprList COMMA expr                               { $$ = $1; appendExprToExprList($$, $3); }
+            | expr                                              { $$ = $1; } // { $$ = new std::vector<Expr::Expression*>(); $$->push_back($1); }
             ;
 
 
 
 %%
 
-int main (void)
-{
-  // start parser
-  yyparse();
 
-  if (result == nullptr) {
-      return 0;
-  }
 
-  // output printer result to stdout
-  ASTPrinter p;
-  p.printProgram(result);
+
+/* =========================================================== */
+/* ================ Method & Program helper ================== */
+/* =========================================================== */
+N_PROG* create_RootProg(Token* progIdentifier, N_PROG* subProgList, N_STMT* compStmt) {
+    // create a new program (setting subProgList to NULL makes the function return a new program without appending it anywhere)
+    N_PROG* prog = create_Prog(progIdentifier, NULL, compStmt);
+
+    // append the given subProgList to the new "main" program
+    prog->next = subProgList;
+
+    return prog;
 }
 
-void yyerror(const char* msg)
-{
-  std::cerr << "Error at line " << yylineno << ": " << msg << "\n" << std::endl;
+N_PROG* create_Prog(Token* progIdentifier, N_PROG* subProgList, N_STMT* compStmt) {
+    N_PROG* prog = (N_PROG*) malloc(sizeof(N_PROG));
+
+    prog->id = progIdentifier->lexeme;
+    prog->stmt = compStmt;
+
+    if (subProgList == NULL) {
+        return prog;
+    } else {
+        prog->next = subProgList;
+        /* while (subProgList->next != NULL) {
+            subProgList = subProgList->next;
+        }
+        subProgList->next = prog; */
+
+        return prog;
+    }
+}
+
+/* =========================================================== */
+/* =================== Statement helper ====================== */
+/* =========================================================== */
+N_STMT* create_AssignmentStmt(Token* identifier, N_EXPR* indexExpr, N_EXPR* rhs) {
+    N_ASSIGN* assign_stmt = (N_ASSIGN*) malloc(sizeof(N_ASSIGN));
+
+    assign_stmt->var_ref = (N_VAR_REF*) malloc(sizeof(N_VAR_REF));
+    assign_stmt->var_ref->id = identifier->lexeme;
+    assign_stmt->var_ref->index = indexExpr;
+
+    assign_stmt->rhs_expr = rhs;
+
+    return create_Stmt(N_STMT::_ASSIGN, assign_stmt, NULL, NULL, NULL);
+}
+
+N_STMT* create_IfStmt(N_EXPR* condition, N_STMT* then_part, N_STMT* else_part) {
+    N_IF* if_stmt = (N_IF*) malloc(sizeof(N_IF));
+
+    if_stmt->expr = condition;
+    if_stmt->then_part = then_part;
+    if_stmt->else_part = else_part;
+
+    return create_Stmt(N_STMT::_IF, NULL, if_stmt, NULL, NULL);
+}
+
+N_STMT* create_WhileStmt(N_EXPR* condition, N_STMT* body) {
+    N_WHILE* while_stmt = (N_WHILE*) malloc(sizeof(N_WHILE));
+
+    while_stmt->expr = condition;
+    while_stmt->stmt = body;
+
+    return create_Stmt(N_STMT::_WHILE, NULL, NULL, while_stmt, NULL);
+}
+
+N_STMT* create_CallStmt(Token* identifierToken, N_EXPR* par_list) {
+    N_CALL* call_stmt = (N_CALL*) malloc(sizeof(N_CALL));
+
+    call_stmt->id = identifierToken->lexeme;
+    call_stmt->par_list = par_list;
+
+    return create_Stmt(N_STMT::_PROC_CALL, NULL, NULL, NULL, call_stmt);
+}
+
+N_STMT* create_Stmt(N_STMT::eN_STMT_TYPE type, N_ASSIGN* assign_stmt, N_IF* if_stmt, N_WHILE* while_stmt, N_CALL* proc_call) {
+    N_STMT* stmt = (N_STMT*) malloc(sizeof(N_STMT));
+    stmt->typ = type;
+
+    switch (stmt->typ)
+    {
+        case N_STMT::_ASSIGN:    stmt->node.assign_stmt = assign_stmt; break;
+        case N_STMT::_IF:        stmt->node.if_stmt = if_stmt; break;
+        case N_STMT::_WHILE:     stmt->node.while_stmt = while_stmt; break;
+        case N_STMT::_PROC_CALL: stmt->node.proc_call = proc_call; break;
+
+        default: cout << "ERROR: got unexpected statement type!\n"; exit(1); break;
+    }
+
+    return stmt;
+}
+
+void appendStmtToStmtList(N_STMT* stmtList, N_STMT* stmt) {
+    while (stmtList->next != NULL) {
+        stmtList = stmtList->next;
+    }
+
+    stmtList->next = stmt;
+}
+
+/* =========================================================== */
+/* =================== Expression helper ===================== */
+/* =========================================================== */
+
+N_EXPR* create_LiteralExpr(Token* literalToken) {
+    N_EXPR* expr = (N_EXPR*) malloc(sizeof(N_EXPR));
+
+    expr->typ = tN_EXPR::CONSTANT;
+    expr->desc.constant = literalToken->lexeme;
+
+    return expr;
+}
+
+N_EXPR* create_IdentifierExpr(Token* identifierToken, N_EXPR* indexExpr) {
+    N_EXPR* expr = (N_EXPR*) malloc(sizeof(N_EXPR));
+
+    expr->typ = tN_EXPR::VAR_REF;
+
+    expr->desc.var_ref = (N_VAR_REF*) malloc(sizeof(N_VAR_REF));
+    expr->desc.var_ref->id = identifierToken->lexeme;
+    expr->desc.var_ref->index = indexExpr;
+
+    return expr;
+}
+
+N_EXPR* create_OPExpr(N_EXPR* left, Token* op, N_EXPR* right) {
+    N_EXPR* expr = (N_EXPR*) malloc(sizeof(N_EXPR));
+
+    expr->typ = tN_EXPR::OP;
+
+    expr->desc.operation.expr = left;
+    expr->desc.operation.expr->next = right;
+    /* expr->desc.operation.op = tN_EXPR::uN_EXPR_UNION::tN_OP::EQ_OP; // EQ_OP */
+    expr->desc.operation.op = op; // EQ_OP
+
+    return expr;
+}
+
+N_EXPR* create_CallExpr(Token* funcToken, N_EXPR* parList) {
+    N_EXPR* expr = (N_EXPR*) malloc(sizeof(N_EXPR));
+
+    expr->typ = tN_EXPR::FUNC_CALL;
+
+    expr->desc.func_call = (N_CALL*) malloc(sizeof(N_CALL));
+    expr->desc.func_call->id = funcToken->lexeme;
+    expr->desc.func_call->par_list = parList;
+
+    return expr;
+}
+
+void appendExprToExprList(N_EXPR* exprList, N_EXPR* expr) {
+    while (exprList->next != NULL) {
+        exprList = exprList->next;
+    }
+
+    exprList->next = expr;
+}
+
+
+
+/* =========================================================== */
+/* ==================== Main entry point ===================== */
+/* =========================================================== */
+
+int main (void) {
+    // start parser
+    yyparse();
+
+    // if no error occured, print the resulting AST
+    if (result != NULL) {
+        // from ASTPrinter.h
+        printProgram(result);
+    }
+}
+
+void yyerror(const char* msg) {
+    std::cerr << "Error at line " << yylineno << ": " << msg << "\n" << std::endl;
 }

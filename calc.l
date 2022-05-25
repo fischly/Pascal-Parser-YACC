@@ -5,12 +5,9 @@
     extern "C" int yylex();
 
     #include <iostream>
+    
     #include "AST/Token.h"
-    #include "AST/Expression.h"
-    #include "AST/Statement.h"
-    #include "AST/Variable.h"
-    #include "AST/Method.h"
-    #include "AST/Program.h"
+    #include "AST/ast_symtab.h"
 
     #include "calc.tab.h"
 

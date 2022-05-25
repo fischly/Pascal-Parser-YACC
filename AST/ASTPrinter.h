@@ -1,269 +1,173 @@
 #include <iostream>
-#include <string>
-#include <sstream>
-#include <list>
 
-#include "Expression.h"
-#include "Statement.h"
-#include "Method.h"
-#include "Program.h"
+#include "Token.h"
+#include "ast_symtab.h"
 
 using std::cout;
-using std::vector;
 
-class ASTPrinter {
-public:
-    void printProgram(Program* program) {
-        // header
-        cout << "program " << program->identifier->lexeme << ";\n";
-        // declarations
-        printDeclarations(program->declarations);
+// forward declarations
+void printProgram(N_PROG* program);
+void printSubprogram(N_PROG* subprogram);
+void printStmt(N_STMT* stmt);
+void printAssignStmt(N_ASSIGN* stmt);
+void printIfStmt(N_IF* stmt);
+void printWhileStmt(N_WHILE* stmt);
+void printCallStmt(N_CALL* stmt);
+void printExpr(N_EXPR* expr);
+void printConstantExpr(N_EXPR* expr);
+void printVarRefExpr(N_EXPR* expr);
+void printOPExpr(N_EXPR* expr);
+void printFuncCallExpr(N_EXPR* expr);
 
-        // methods
-        for (const auto& meth : *program->methods) {
-            printMethod(meth);
-            cout << "\n\n";
-        }
 
-        // main block statement
-        printStmt(program->main);
+/* =========================================================== */
+/* ================ Program & Method printing ================ */
+/* =========================================================== */
+void printProgram(N_PROG* program) {
+    // header
+    cout << "program " << program->id << ";\n";
 
-        cout << ".\n";
+    // main block statement
+    printStmt(program->stmt);
+
+    // other methods (sub programs)
+    N_PROG* other = program->next;
+    while (other != NULL) {
+        cout << "\n\n\n";
+        printSubprogram(other);
+        other = other->next;
     }
 
-    void printMethod(Method* method) {
-        // function or procedure
-        if (method->returnType != NULL) {
-            cout << "function ";
-        } else {
-            cout << "procedure ";
-        }
+    cout << ".\n";
+}
 
-        // method name
-        cout << method->identifier->lexeme;
+void printSubprogram(N_PROG* subprogram) {
+    cout << "subprogram " << subprogram->id << ";\n";
+    printStmt(subprogram->stmt);
+}
 
-        // arguments
-        cout << "(";
-        for (auto const& argVar : *method->arguments) {
-            // argument name
-            cout << argVar->name->lexeme << ": ";
+/* =========================================================== */
+/* =================== Statement printing ==================== */
+/* =========================================================== */
+void printStmt(N_STMT* stmt) {
+    switch (stmt->typ)
+    {
+        case N_STMT::_ASSIGN:    printAssignStmt(stmt->node.assign_stmt); break;
+        case N_STMT::_IF:        printIfStmt(stmt->node.if_stmt); break;
+        case N_STMT::_WHILE:     printWhileStmt(stmt->node.while_stmt); break;
+        case N_STMT::_PROC_CALL: printCallStmt(stmt->node.proc_call); break;
 
-            // argument type
-            if (Variable::VariableTypeSimple* simpleVar = dynamic_cast<Variable::VariableTypeSimple*>(argVar->type)) {
-                cout << simpleVar->typeName->lexeme;
-            } else if (Variable::VariableTypeArray* arrayVar = dynamic_cast<Variable::VariableTypeArray*>(argVar->type)) {
-                cout << "array [" << arrayVar->startRange->lexeme << ".." << arrayVar->stopRange->lexeme << "] of " << arrayVar->typeName->lexeme;
-            }
-            
-            // seperating semicolon (if not last argument)
-            if (argVar != method->arguments->back()) {
-                cout << "; ";
-            }
-        }
-        cout << ")";
+        default: cout << "ERROR: got unexpected statement type!\n"; exit(1); break;
+    }
 
-        // return type
-        if (method->returnType != NULL) {
-            cout << ": ";
-            if (Variable::VariableTypeSimple* simpleVar = dynamic_cast<Variable::VariableTypeSimple*>(method->returnType)) {
-                cout << simpleVar->typeName->lexeme;
-            } else if (Variable::VariableTypeArray* arrayVar = dynamic_cast<Variable::VariableTypeArray*>(method->returnType)) {
-                cout << "array [" << arrayVar->startRange->lexeme << ".." << arrayVar->stopRange->lexeme << "] of " << arrayVar->typeName->lexeme;
-            }
-        }
+    if (stmt->next != NULL) {
         cout << ";\n";
-
-        // declarations
-        printDeclarations(method->declarations);
-
-        // statement block
-        printStmt(method->block);
-
-        // each method ends with a ;
-        cout << ";";
+        printStmt(stmt->next);
     }
+}
 
-    /* ------------------------------------------------ */
-    /* ----------------- Statements ------------------- */
-    /* ------------------------------------------------ */
-    void printStmt(Stmt::Statement* stmt) {
-        // try to type cast to find out which statement we are working with
-        // and call the according function afterwards
-        if (Stmt::Assignment* assignStmt = dynamic_cast<Stmt::Assignment*>(stmt)) {
-            printAssignmentStmt(assignStmt);
-        } else if (Stmt::Block* blockStmt = dynamic_cast<Stmt::Block*>(stmt)) {
-            printBlockStmt(blockStmt);
-        } else if (Stmt::Call* callStmt = dynamic_cast<Stmt::Call*>(stmt)) {
-            printCallStmt(callStmt);
-        } else if (Stmt::If* ifStmt = dynamic_cast<Stmt::If*>(stmt)) {
-            printIfStmt(ifStmt);
-        } else if (Stmt::While* whileStmt = dynamic_cast<Stmt::While*>(stmt)) {
-            printWhileStmt(whileStmt);
-        } 
+void printAssignStmt(N_ASSIGN* stmt) {
+    cout << "(assign " << stmt->var_ref->id;
+    // optional index
+    if (stmt->var_ref->index != NULL) {
+        cout << "[";
+        printExpr(stmt->var_ref->index);
+        cout << "]";
     }
+    cout << " := ";
+    printExpr(stmt->rhs_expr);
+    cout << ")";
+}
 
-    void printAssignmentStmt(Stmt::Assignment* stmt) {
-        // variable name that is assigned
-        cout << stmt->identifier->lexeme;
-        // variable array index (if applicable) 
-        if (stmt->arrayIndex != NULL) {
-            cout << "[";
-            printExpr(stmt->arrayIndex);
-            cout << "]";
-        }
-        // assignment sign
-        cout << " := ";
-        // the "right" side of the assignment
-        printExpr(stmt->value);
-    }
+void printIfStmt(N_IF* stmt) {
+    cout << "(if ";
+    printExpr(stmt->expr);
+    cout << " then (\n";
+    printStmt(stmt->then_part);
+    cout << ")\n";
 
-    
-    void printBlockStmt(Stmt::Block* stmt) {
-        cout << "\nbegin";
-        // print each statement that is contained in this block
-        for (auto const& stmtInside : *stmt->statements) {
-            cout << "\n";
-            printStmt(stmtInside);
-
-            // print seperating ; if not last statement
-            if (stmtInside != stmt->statements->back()) {
-                cout << ";";
-            }
-        }
-        cout << "\nend\n";
-    }
-
-    void printCallStmt(Stmt::Call* stmt) {
-        // name of the called method and the opening bracket
-        cout << stmt->callee->lexeme << "(";
-        // all the arguments of the call
-        for (auto const& exprArg : *stmt->arguments) {
-            // print the expression
-            printExpr(exprArg);
-
-            // print , as seperator if not last argument
-            if (exprArg != stmt->arguments->back()) {
-                cout << ", ";
-            }
-        }
+    if (stmt->else_part != NULL) {
+        cout << "else (\n";
+        printStmt(stmt->else_part);
         cout << ")";
     }
+    cout << ")";
+}
 
-    void printIfStmt(Stmt::If* stmt) {
-        cout << "\nif ";
-        printExpr(stmt->condition);
-        cout << " then\n";
-        printStmt(stmt->thenBody);
+void printWhileStmt(N_WHILE* stmt) {
+    cout << "(while ";
+    printExpr(stmt->expr);
+    cout << " do \n";
+    printStmt(stmt->stmt);
+    cout << ")";
+}
 
-        if (stmt->elseBody != NULL) {
-            cout << "\nelse ";
-            printStmt(stmt->elseBody);
-        }
+void printCallStmt(N_CALL* stmt) {
+    cout << "(call " << stmt->id;
+    // print parameter list
+    N_EXPR* parameter = stmt->par_list;
+    while (parameter != NULL) {
+        cout << " ";
+        printExpr(parameter);
+        parameter = parameter->next;
     }
+    cout << ")";
+}
 
-    void printWhileStmt(Stmt::While* stmt) {
-        cout << "\nwhile ";
-        printExpr(stmt->condition);
-        cout << "\ndo\n";
-        printStmt(stmt->body);
+/* =========================================================== */
+/* ================== Expression printing ==================== */
+/* =========================================================== */
+void printExpr(N_EXPR* expr) {
+    switch (expr->typ)
+    {
+        case N_EXPR::CONSTANT:  printConstantExpr(expr); break;
+        case N_EXPR::VAR_REF:   printVarRefExpr(expr); break;
+        case N_EXPR::OP:        printOPExpr(expr); break;
+        case N_EXPR::FUNC_CALL: printFuncCallExpr(expr); break;
+
+        default: cout << "ERROR: got unexpected expression type!\n"; exit(1); break;
     }
+}
 
+void printConstantExpr(N_EXPR* expr) {
+    // just print literal value
+    cout << expr->desc.constant;
+}
 
+void printVarRefExpr(N_EXPR* expr) {
+    // print identifier name
+    cout << expr->desc.var_ref->id;
 
-    /* ------------------------------------------------ */
-    /* ---------------- Expressions ------------------- */
-    /* ------------------------------------------------ */
-    void printExpr(Expr::Expression* expr) {
-        // try to type cast to find out which expression we are working with
-        // and call the according function afterwards
-        if (Expr::Binary* binaryExpr = dynamic_cast<Expr::Binary*>(expr)) {
-            printBinaryExpr(binaryExpr);
-        } else if (Expr::Call* callExpr = dynamic_cast<Expr::Call*>(expr)) {
-            printCallExpr(callExpr);
-        } else if (Expr::Grouping* groupExpr = dynamic_cast<Expr::Grouping*>(expr)) {
-            printGroupingExpr(groupExpr);
-        } else if (Expr::Identifier* identExpr = dynamic_cast<Expr::Identifier*>(expr)) {
-            printIdentifierExpr(identExpr);
-        } else if (Expr::Literal* literalExpr = dynamic_cast<Expr::Literal*>(expr)) {
-            printLiteralExpr(literalExpr);
-        } else if (Expr::Unary* unaryExpr = dynamic_cast<Expr::Unary*>(expr)) {
-            printUnaryExpr(unaryExpr);
-        }
+    // optional array index
+    if (expr->desc.var_ref->index != NULL) {
+        cout << "[";
+        printExpr(expr->desc.var_ref->index);
+        cout << "]";
     }
+}
 
-    void printBinaryExpr(Expr::Binary* expr) {
-        // left side of the binary expression
-        printExpr(expr->left);
-        // operator
-        cout << " " << expr->op->lexeme << " ";
-        // right side of the binary expression
-        printExpr(expr->right);
+void printOPExpr(N_EXPR* expr) {
+    cout << "(" << expr->desc.operation.op->lexeme << " ";
+    // print left expr
+    printExpr(expr->desc.operation.expr);
 
+    // print optional right expr
+    if (expr->desc.operation.expr->next != NULL) {
+        cout << " ";
+        printExpr(expr->desc.operation.expr->next);
     }
+    cout << ")";
+}
 
-    void printCallExpr(Expr::Call* expr) {
-        // called method name
-        cout << expr->callee->lexeme << "(";
-        // all arguments
-        for (auto const& exprArg : *expr->arguments) {
-            printExpr(exprArg);
-
-            // seperating ,
-            if (exprArg != expr->arguments->back()) {
-                cout << ", ";
-            }
-        }
-        cout << ")";
+void printFuncCallExpr(N_EXPR* expr) {
+    // print method name
+    cout << "(call " << expr->desc.func_call->id << " ";
+    // print parameter list
+    N_EXPR* parameter = expr->desc.func_call->par_list;
+    while (parameter != NULL) {
+        printExpr(parameter);
+        cout << " ";
+        parameter = parameter->next;
     }
-
-    void printGroupingExpr(Expr::Grouping* expr) {
-        cout << "(";
-        // the contained expression
-        printExpr(expr->expression);
-        cout << ")";
-    }
-
-    void printIdentifierExpr(Expr::Identifier* expr) {
-        // the name of the identifier
-        cout << expr->token->lexeme;
-
-        // optionally, the array index
-        if (expr->arrayIndexExpression != NULL) {
-            cout << "[";
-            printExpr(expr->arrayIndexExpression);
-            cout << "]";
-        }
-    }
-
-    void printLiteralExpr(Expr::Literal* expr) {
-        // just the literal value
-        cout << expr->token->lexeme;
-    }
-
-    void printUnaryExpr(Expr::Unary* expr) {
-        // operator and the right side expression
-        cout << expr->op->lexeme;
-        printExpr(expr->right);
-    }
-
-
-
-
-    void printDeclarations(vector<Variable*>* declarations) {
-        if (declarations->size() > 0) {
-            cout << "  var ";
-
-            for (const auto& declVar : *declarations) {
-                cout << "      " << declVar->name->lexeme << ": ";
-
-                if (Variable::VariableTypeSimple* simpleVar = dynamic_cast<Variable::VariableTypeSimple*>(declVar->type)) {
-                    cout << simpleVar->typeName->lexeme << ";\n";
-                } else if (Variable::VariableTypeArray* arrayVar = dynamic_cast<Variable::VariableTypeArray*>(declVar->type)) {
-                    cout << "array [" << arrayVar->startRange->lexeme << ".." << arrayVar->stopRange->lexeme << "] of " << arrayVar->typeName->lexeme << ";\n";
-                }
-            }
-        }
-
-        cout << "\n";
-    }
-};
+    cout << ")";
+}
