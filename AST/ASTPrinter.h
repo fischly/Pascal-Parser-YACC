@@ -25,7 +25,7 @@ void printFuncCallExpr(N_EXPR* expr);
 /* =========================================================== */
 void printProgram(N_PROG* program) {
     // header
-    cout << "program " << program->id << ";\n";
+    cout << "program " << program->symtab_entry->base.id << ";\n";
 
     // main block statement
     printStmt(program->stmt);
@@ -42,7 +42,7 @@ void printProgram(N_PROG* program) {
 }
 
 void printSubprogram(N_PROG* subprogram) {
-    cout << "subprogram " << subprogram->id << ";\n";
+    cout << "subprogram " << subprogram->symtab_entry->base.id << ";\n";
     printStmt(subprogram->stmt);
 }
 
@@ -67,7 +67,13 @@ void printStmt(N_STMT* stmt) {
 }
 
 void printAssignStmt(N_ASSIGN* stmt) {
-    cout << "(assign " << stmt->var_ref->id;
+    // cout << "[PRINT ASSIGN] SYMTAB ENTRY = "    << stmt->var_ref->symtab_entry << ", " << stmt->var_ref->id << "\n";
+    // TODO: remove when all variables get assigned
+    if (stmt->var_ref->symtab_entry != NULL) {
+        cout << "(assign " << stmt->var_ref->symtab_entry->base.id;
+    } else {
+        cout << "(assign " << stmt->var_ref->id;
+    }
     // optional index
     if (stmt->var_ref->index != NULL) {
         cout << "[";

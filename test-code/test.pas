@@ -132,8 +132,6 @@ begin
     i := i+1
   end;
 
-  do123 := 42;
-
   bubble_sort(x, b)
 
 end.

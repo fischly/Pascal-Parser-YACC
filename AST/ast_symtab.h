@@ -44,7 +44,7 @@ typedef struct tENTRY {
       int upp;
     } bounds; 
     union { 
-      struct tENTRY **par_list;	/* Declaration (i.e. in the first entry of its own symbol table): formal parameter list (vector of pointers to symbol table entries) */
+      struct tENTRY *par_list;	/* Declaration (i.e. in the first entry of its own symbol table): formal parameter list (vector of pointers to symbol table entries) */
       struct tN_PROG *ast;	/* Call (i.e. in the caller's symbol table): root node of the corresponding AST */
     } prog;
   } ext;
@@ -67,6 +67,7 @@ typedef struct tENTRY {
 
 /* 1. Reference to a (scalar or array) variable */
 typedef struct tN_VAR_REF {
+  ENTRY* symtab_entry;
   char *id;			/* Id of variable */
   struct tN_EXPR *index;	/* One or two index expressions, null in case of scalar */
 } N_VAR_REF;
@@ -76,6 +77,7 @@ typedef struct tN_VAR_REF {
 typedef struct tN_EXPR {
   enum { CONSTANT=0, VAR_REF, OP, FUNC_CALL } typ;
   union uN_EXPR_UNION {
+    ENTRY* symtab_entry;
     char *constant;		/* String value of the constant */
     N_VAR_REF *var_ref;		/* Reference to a variable */
     struct tN_OP {
@@ -133,7 +135,7 @@ typedef struct tN_STMT {
 
 /* 8. Root node of a program module's AST */
 typedef struct tN_PROG {
-  char* id;     /* TODO: remove later, just introduced to store the method name somewhere, as long as we should not use T_ENTRY */ 
+  ENTRY* symtab_entry;
   N_STMT *stmt;		/* First statement of the program module */
   struct tN_PROG *next;	/* Next program module in the list of modules */
 } N_PROG;
