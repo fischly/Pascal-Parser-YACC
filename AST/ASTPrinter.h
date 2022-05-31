@@ -69,11 +69,8 @@ void printStmt(N_STMT* stmt) {
 void printAssignStmt(N_ASSIGN* stmt) {
     // cout << "[PRINT ASSIGN] SYMTAB ENTRY = "    << stmt->var_ref->symtab_entry << ", " << stmt->var_ref->id << "\n";
     // TODO: remove when all variables get assigned
-    if (stmt->var_ref->symtab_entry != NULL) {
-        cout << "(assign " << stmt->var_ref->symtab_entry->base.id;
-    } else {
-        cout << "(assign " << stmt->var_ref->id;
-    }
+    cout << "(assign [!]" << stmt->var_ref->symtab_entry->base.id;
+
     // optional index
     if (stmt->var_ref->index != NULL) {
         cout << "[";
@@ -137,12 +134,16 @@ void printExpr(N_EXPR* expr) {
 
 void printConstantExpr(N_EXPR* expr) {
     // just print literal value
-    cout << expr->desc.constant;
+    cout << expr->desc.constant.value;
 }
 
 void printVarRefExpr(N_EXPR* expr) {
     // print identifier name
-    cout << expr->desc.var_ref->id;
+    if (expr->desc.var_ref->symtab_entry != NULL) {
+        cout << "[!]" << expr->desc.var_ref->symtab_entry->base.id;
+    } else {
+        cout << "[ALARM]" << expr->desc.var_ref->id;
+    }
 
     // optional array index
     if (expr->desc.var_ref->index != NULL) {

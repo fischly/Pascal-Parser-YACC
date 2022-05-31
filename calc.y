@@ -17,7 +17,6 @@
 
     // variable to hold the expression AST temporarily
     N_PROG* result;
-    ENTRY* current_varDecl_symtab, *current_parameters_symtab;
 
     // forward declarations
     N_PROG* create_RootProg(Token* progIdentifier, ENTRY* varDec, N_PROG* subProgList, N_STMT* compStmt);
@@ -43,9 +42,60 @@
     N_EXPR* create_CallExpr(Token* funcToken, N_EXPR* parList);
     void appendExprToExprList(N_EXPR* exprList, N_EXPR* expr);
 
+    void link_SymbolTable(N_PROG* prog);
+    void link_AssignStmt(N_ASSIGN* stmt, ENTRY* symtab);
+    void link_IfStmt(N_IF* stmt, ENTRY* symtab);
+    void link_WhileStmt(N_WHILE* stmt, ENTRY* symtab);
+    void link_ProcCallStmt(N_CALL* stmt, ENTRY* symtab);
+    void link_Statement(N_STMT* stmt, ENTRY* symtab);
+
+    void link_Expression(N_EXPR* expr, ENTRY* symtab);
+    void link_ConstantExpr(N_EXPR* expr, ENTRY* symtab);
+    void link_VarRefExpr(N_EXPR* expr, ENTRY* symtab) ;
+    void link_OPExpr(N_EXPR* expr, ENTRY* symtab);
+    void link_FuncCallExpr(N_EXPR* expr, ENTRY* symtab);
+
     ENTRY* getEntryFromSymtable(ENTRY* symtable, char* identifier);
     ENTRY* getEntryFromSymtable(ENTRY* varDeclSymtab, ENTRY* paramsSymtab, char* identifier);
 
+
+    void printAllVariables(N_PROG* prog) {
+        const char* DATA_TYPE_NAMES[] = { [0] = "_BOOL", [1] = "_INT", [2] = "_REAL", [3] = "_VOID" };
+        const char* ENTRY_TYPE[] = { [0] = "_CONST", [1] = "_VAR", [2] = "_ARRAY", [3] = "_PROG", [4] = "_CALL" };
+
+        std::cout << "================= Printing all variables ==========================" << std::endl;
+        std::cout << "---- Main program (" << prog->symtab_entry->base.id << ") ----" << std::endl;
+        std::cout << " varDecl\n";
+
+        ENTRY* decl = prog->symtab_entry->next;
+        while (decl != NULL) {
+            std::cout << " - [" << ENTRY_TYPE[decl->typ] << "] " << decl->base.id << ": " << DATA_TYPE_NAMES[decl->data_type] << "\n";
+            decl = decl->next;
+        }
+
+        // other methods (sub programs)
+        N_PROG* other = prog->next;
+        while (other != NULL) {
+            std::cout << "\n\n---- Method (" << other->symtab_entry->base.id << ") ----" << std::endl;
+            std::cout << " arguments\n";
+            ENTRY* arg = other->symtab_entry->ext.prog.par_list;
+            while (arg != NULL) {
+                std::cout << " - [" << ENTRY_TYPE[arg->typ] << "] " << arg->base.id << ": " << DATA_TYPE_NAMES[arg->data_type] << "\n";
+                arg = arg->next;
+            }
+
+            std::cout << " varDecl\n";
+            ENTRY* decl = other->symtab_entry->next;
+            while (decl != NULL) {
+                std::cout << " - [" << ENTRY_TYPE[decl->typ] << "] " << decl->base.id << ": " << DATA_TYPE_NAMES[decl->data_type] << "\n";
+                decl = decl->next;
+            }
+            other = other->next;
+        }
+
+        std::cout << "================= Printing all variables DONE ==========================" << std::endl << std::endl;
+
+    }
 
     void printIdentListType(ENTRY* identList) {
         
@@ -123,8 +173,8 @@ store       : start { result = $1; }
 /* ==================== Program grammar ====================== */
 /* =========================================================== */
 
-start       : PROGRAM IDENTIFIER SEMICOLON varDec subProgList { current_varDecl_symtab = $4; current_parameters_symtab = NULL; }  
-              compStmt DOT                                    { $$ = create_RootProg($2, $4, $5, $7); }
+start       : PROGRAM IDENTIFIER SEMICOLON varDec 
+              subProgList compStmt DOT                        { $$ = create_RootProg($2, $4, $5, $6); link_SymbolTable($$); printAllVariables($$); }
             ;
 
 varDec      : VAR varDecList                                  { $$ = $2; }
@@ -158,8 +208,7 @@ simpleType  : INTEGER
 /* ===================== Method grammar ====================== */
 /* =========================================================== */
 
-subProgList : subProgList subProgHead varDec                    {  current_varDecl_symtab = $3; current_parameters_symtab = $2->ext.prog.par_list; }
-              compStmt SEMICOLON                                { $$ = create_Prog($2, $3, $1, $5); }
+subProgList : subProgList subProgHead varDec compStmt SEMICOLON { $$ = create_Prog($2, $3, $1, $4); }
             | /* epsilon */                                     { $$ = NULL; }
             ;
 
@@ -375,6 +424,7 @@ ENTRY* create_IdentListType(ENTRY* identList, ENTRY* type) {
 ENTRY* create_IdentList(Token* identifier, ENTRY* identList) {
     ENTRY* entry = (ENTRY*) malloc(sizeof(ENTRY));
     entry->base.id = identifier->lexeme;
+    entry->typ = ENTRY::_VAR;
 
     if (identList == NULL) {
         return entry;
@@ -418,21 +468,6 @@ N_STMT* create_AssignmentStmt(Token* identifier, N_EXPR* indexExpr, N_EXPR* rhs)
     assign_stmt->var_ref = (N_VAR_REF*) malloc(sizeof(N_VAR_REF));
     assign_stmt->var_ref->id = identifier->lexeme;
     assign_stmt->var_ref->index = indexExpr;
-
-    // check symbol table
-    ENTRY* symtableEntry = getEntryFromSymtable(current_varDecl_symtab, current_parameters_symtab, identifier->lexeme);
-    
-    if (symtableEntry == NULL) {
-        std::cerr << "Using undeclared variable '" << identifier->lexeme << "' at line " << yylineno << ". Aborting.";
-    } 
-    assign_stmt->var_ref->symtab_entry = symtableEntry;
-
-    if (current_varDecl_symtab != NULL) {
-        std::cout << "[ASSIGNING VARIABLE " << identifier->lexeme << ": current symtab = " << current_varDecl_symtab->base.id << "]\n";
-    } else {
-        std::cout << "[ASSIGNING VARIABLE " << identifier->lexeme << ": current symtab = NULL]\n";
-    }
-    
 
     assign_stmt->rhs_expr = rhs;
 
@@ -500,7 +535,19 @@ N_EXPR* create_LiteralExpr(Token* literalToken) {
     N_EXPR* expr = (N_EXPR*) malloc(sizeof(N_EXPR));
 
     expr->typ = tN_EXPR::CONSTANT;
-    expr->desc.constant = literalToken->lexeme;
+    expr->desc.constant.value = literalToken->lexeme;
+
+    // parse constant value
+    ENTRY* entry = (ENTRY*) malloc(sizeof(ENTRY));
+    entry->typ = ENTRY::_CONST;
+    switch (literalToken->type) {
+        case yytokentype::LITERAL_FALSE:   entry->data_type = DATA_TYPE::_BOOL; entry->base.bool_val = _BOOLEAN::_FALSE; break;
+        case yytokentype::LITERAL_TRUE:    entry->data_type = DATA_TYPE::_BOOL; entry->base.bool_val = _BOOLEAN::_TRUE; break;
+        case yytokentype::LITERAL_INTEGER: entry->data_type = DATA_TYPE::_INT;  entry->base.int_val = std::stoi(literalToken->lexeme); break;
+        case yytokentype::LITERAL_REAL:    entry->data_type = DATA_TYPE::_REAL; entry->base.real_val = std::stof(literalToken->lexeme); break;
+        default: std::cerr << "Error while trying to parse the constant '" << literalToken->lexeme << " at line " << yylineno << ". Unknown type.\n"; break;
+    }
+    expr->desc.constant.symtab_entry = entry;
 
     return expr;
 }
@@ -553,11 +600,134 @@ void appendExprToExprList(N_EXPR* exprList, N_EXPR* expr) {
 /* =========================================================== */
 /* ================== Symbol table helper ==================== */
 /* =========================================================== */
+
+void link_SymbolTable(N_PROG* prog) {
+    // link program main block
+    link_Statement(prog->stmt, prog->symtab_entry);
+
+    // link subprogram modules (= methods)
+    N_PROG* method = prog->next;
+    while (method != NULL) {
+        link_Statement(method->stmt, method->symtab_entry->ext.prog.par_list);
+        link_Statement(method->stmt, method->symtab_entry);
+        method = method->next;
+    }
+}
+
+/* -------------------- Link expressions --------------------- */
+
+void link_Expression(N_EXPR* expr, ENTRY* symtab) {
+    switch (expr->typ)
+    {
+        case N_EXPR::CONSTANT:  link_ConstantExpr(expr, symtab); break;
+        case N_EXPR::VAR_REF:   link_VarRefExpr(expr, symtab); break;
+        case N_EXPR::OP:        link_OPExpr(expr, symtab); break;
+        case N_EXPR::FUNC_CALL: link_FuncCallExpr(expr, symtab); break;
+
+        default: cout << "ERROR: got unexpected expression type!\n"; exit(1); break;
+    }
+}
+void link_ConstantExpr(N_EXPR* expr, ENTRY* symtab) {
+    // TODO
+}
+void link_VarRefExpr(N_EXPR* expr, ENTRY* symtab) {
+    // link variable usages
+    ENTRY* entry = getEntryFromSymtable(symtab, expr->desc.var_ref->id);
+    if (entry == NULL) {
+        /* std::cerr << "Error: tried to access variable '" << expr->desc.var_ref->id << "' but it was not declared!\n"; */
+    } else {
+        expr->desc.var_ref->symtab_entry = entry;
+    }
+}
+void link_OPExpr(N_EXPR* expr, ENTRY* symtab) {
+    // link both LHS and RHS expressions
+    link_Expression(expr->desc.operation.expr, symtab);
+    if (expr->desc.operation.expr->next != NULL) {
+        link_Expression(expr->desc.operation.expr->next, symtab);
+    }
+}
+void link_FuncCallExpr(N_EXPR* expr, ENTRY* symtab) {
+    // TODO
+    N_EXPR* argument = expr->desc.func_call->par_list;
+    while (argument != NULL) {
+        link_Expression(argument, symtab);
+        argument = argument->next;
+    }
+}
+
+/* --------------------- Link statements --------------------- */
+
+void link_Statement(N_STMT* stmt, ENTRY* symtab) {
+    switch (stmt->typ)
+    {
+        case N_STMT::_ASSIGN:    link_AssignStmt(stmt->node.assign_stmt, symtab); break;
+        case N_STMT::_IF:        link_IfStmt(stmt->node.if_stmt, symtab); break;
+        case N_STMT::_WHILE:     link_WhileStmt(stmt->node.while_stmt, symtab); break;
+        case N_STMT::_PROC_CALL: link_ProcCallStmt(stmt->node.proc_call, symtab); break;
+
+        default: cout << "ERROR: got unexpected statement type!\n"; exit(1); break;
+    }
+
+    if (stmt->next != NULL) {
+        link_Statement(stmt->next, symtab);
+    }
+}
+
+void link_AssignStmt(N_ASSIGN* stmt, ENTRY* symtab) {
+    ENTRY* entry = getEntryFromSymtable(symtab, stmt->var_ref->id);
+    if (entry == NULL) {
+        /* std::cerr << "Error: tried to assign variable '" << stmt->var_ref->id << "' but it was not declared!\n"; */
+    } else {
+        stmt->var_ref->symtab_entry = entry;
+    }
+
+    link_Expression(stmt->rhs_expr, symtab);
+
+    // link optional index
+    if (stmt->var_ref->index != NULL) {
+        link_Expression(stmt->var_ref->index, symtab);
+        if (stmt->var_ref->index->next != NULL) {
+            link_Expression(stmt->var_ref->index->next, symtab);
+        }
+    }
+    
+}
+
+void link_IfStmt(N_IF* stmt, ENTRY* symtab) {
+    link_Expression(stmt->expr, symtab);
+
+    // link then part
+    link_Statement(stmt->then_part, symtab);
+    if (stmt->else_part != NULL) {
+        link_Statement(stmt->else_part, symtab);
+    }
+}
+
+void link_WhileStmt(N_WHILE* stmt, ENTRY* symtab) {
+    link_Expression(stmt->expr, symtab);
+
+    // link body
+    link_Statement(stmt->stmt, symtab);
+}
+
+void link_ProcCallStmt(N_CALL* stmt, ENTRY* symtab) {
+    N_EXPR* argument = stmt->par_list;
+    while (argument != NULL) {
+        link_Expression(argument, symtab);
+        argument = argument->next;
+    }
+}
+
+
+
+
 ENTRY* getEntryFromSymtable(ENTRY* symtable, char* identifier) {
     while (symtable != NULL) {
         // checks if the identifier match, if they match, return this symtable entry
-        if (strcmp(identifier, symtable->base.id) == 0) {
-            return symtable;
+        if (symtable->typ == ENTRY::_VAR) {
+            if (strcmp(identifier, symtable->base.id) == 0) {
+                return symtable;
+            }
         }
         // if not, continue
         symtable = symtable->next;

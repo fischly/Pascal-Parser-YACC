@@ -77,8 +77,10 @@ typedef struct tN_VAR_REF {
 typedef struct tN_EXPR {
   enum { CONSTANT=0, VAR_REF, OP, FUNC_CALL } typ;
   union uN_EXPR_UNION {
-    ENTRY* symtab_entry;
-    char *constant;		/* String value of the constant */
+    struct {
+      char *value;
+      ENTRY *symtab_entry; 
+    } constant; /* Constant string value and symtab entry */
     N_VAR_REF *var_ref;		/* Reference to a variable */
     struct tN_OP {
       struct tN_EXPR *expr;	/* One ore two operands (must not be null) */
@@ -115,6 +117,7 @@ typedef struct tN_WHILE {
 
 /* 6. Function or procedure call */
 typedef struct tN_CALL {
+  // TODO: link to symbol table entry
   char *id;		/* Id of function or procedure */
   N_EXPR *par_list;	/* Actual parameters */
 } N_CALL;
@@ -135,6 +138,7 @@ typedef struct tN_STMT {
 
 /* 8. Root node of a program module's AST */
 typedef struct tN_PROG {
+  char* identifier;
   ENTRY* symtab_entry;
   N_STMT *stmt;		/* First statement of the program module */
   struct tN_PROG *next;	/* Next program module in the list of modules */
