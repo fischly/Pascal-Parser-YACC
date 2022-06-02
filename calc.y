@@ -17,7 +17,10 @@
 
     // variable to hold the expression AST temporarily
     N_PROG* result;
-    ENTRY* current_varDecl_symtab, *current_parameters_symtab;
+    ENTRY* current_varDecl_symtab; // symtab containing variable declaration of the current function
+    ENTRY* current_subProg_symtab; // symtab containing parameters of the current function
+    ENTRY* global_varDecl_symtab;  // symtab containing variable declarations of global scope (program scope)
+    METHOD* current_subProgList;   // list of all seen subprog entries to link them 
 
     // forward declarations
     N_PROG* create_RootProg(Token* progIdentifier, ENTRY* varDec, N_PROG* subProgList, N_STMT* compStmt);
@@ -45,7 +48,58 @@
 
     ENTRY* getEntryFromSymtable(ENTRY* symtable, char* identifier);
     ENTRY* getEntryFromSymtable(ENTRY* varDeclSymtab, ENTRY* paramsSymtab, char* identifier);
+    ENTRY* getEntryFromSymtableOrGlobal(ENTRY* symtable, char* identifier);
+    ENTRY* getEntryFromMethodList(char* identifier);
 
+
+
+    const char* DATA_TYPE_NAMES[] = { [0] = "_BOOL", [1] = "_INT", [2] = "_REAL", [3] = "_VOID" };
+    const char* ENTRY_TYPE[] = { [0] = "_CONST", [1] = "_VAR", [2] = "_ARRAY", [3] = "_PROG", [4] = "_CALL" };
+
+    void printVarDecl(ENTRY* decl) {
+        while (decl != NULL) {
+            if (decl->typ == ENTRY::_VAR) {
+                std::cout << " - [" << ENTRY_TYPE[decl->typ] << "] " << decl->base.id << ": " << DATA_TYPE_NAMES[decl->data_type] << "\n";
+            } else if (decl->typ == ENTRY::_CONST) {
+                std::cout << " - [" << ENTRY_TYPE[decl->typ] << "] ";
+                switch (decl->data_type) {
+                    case DATA_TYPE::_BOOL: std::cout << (decl->base.bool_val == _BOOLEAN::_FALSE ? "false" : "true"); break;
+                    case DATA_TYPE::_INT:  std::cout << decl->base.int_val; break;
+                    case DATA_TYPE::_REAL: std::cout << decl->base.real_val; break;
+                    case DATA_TYPE::_VOID: std::cout << "VOID"; break;
+                }
+                std::cout << ": " << DATA_TYPE_NAMES[decl->data_type] << "\n";
+            }
+            decl = decl->next;
+        }
+    }
+    void printAllVariables(N_PROG* prog) {
+        std::cout << "================= Printing all variables ==========================" << std::endl;
+        std::cout << "---- Main program (" << prog->symtab_entry->base.id << ") ----" << std::endl;
+        std::cout << " varDecl\n";
+
+        printVarDecl(prog->symtab_entry->next);
+
+        // other methods (sub programs)
+        N_PROG* other = prog->next;
+        while (other != NULL) {
+            std::cout << "\n\n---- Method (" << other->symtab_entry->base.id << ") ----" << std::endl;
+            std::cout << " arguments\n";
+            ENTRY* arg = other->symtab_entry->ext.prog.par_list;
+            while (arg != NULL) {
+                std::cout << " - [" << ENTRY_TYPE[arg->typ] << "] " << arg->base.id << ": " << DATA_TYPE_NAMES[arg->data_type] << "\n";
+                arg = arg->next;
+            }
+
+            std::cout << " varDecl\n";
+            printVarDecl(other->symtab_entry->next);
+
+            other = other->next;
+        }
+
+        std::cout << "================= Printing all variables DONE ==========================" << std::endl << std::endl;
+
+    }
 
     void printIdentListType(ENTRY* identList) {
         
@@ -56,6 +110,23 @@
                 ", upp = " << identList->ext.bounds.upp << 
                 "\n";
             identList = identList->next;
+        }
+    }
+
+
+    void addToCurrentSubProgList(ENTRY* subProgHeadEntry) {
+        METHOD* meth = (METHOD*) malloc(sizeof(METHOD));
+        meth->subProg = subProgHeadEntry;
+
+        if (current_subProgList == NULL) {
+            current_subProgList = meth;
+        } else {
+            // append to the end
+            METHOD* m = current_subProgList;
+            while (m->next != NULL) {
+                m = m->next;
+            }
+            m->next = meth;
         }
     }
 %}
@@ -123,8 +194,9 @@ store       : start { result = $1; }
 /* ==================== Program grammar ====================== */
 /* =========================================================== */
 
-start       : PROGRAM IDENTIFIER SEMICOLON varDec subProgList { current_varDecl_symtab = $4; current_parameters_symtab = NULL; }  
-              compStmt DOT                                    { $$ = create_RootProg($2, $4, $5, $7); }
+start       : PROGRAM IDENTIFIER SEMICOLON varDec             { global_varDecl_symtab = $4; }
+              subProgList                                     { current_varDecl_symtab = $4; current_subProg_symtab = NULL; }  
+              compStmt DOT                                    { $$ = create_RootProg($2, $4, $6, $8); printAllVariables($$); }
             ;
 
 varDec      : VAR varDecList                                  { $$ = $2; }
@@ -158,13 +230,13 @@ simpleType  : INTEGER
 /* ===================== Method grammar ====================== */
 /* =========================================================== */
 
-subProgList : subProgList subProgHead varDec                    {  current_varDecl_symtab = $3; current_parameters_symtab = $2->ext.prog.par_list; }
+subProgList : subProgList subProgHead varDec                    { current_varDecl_symtab = $3; current_subProg_symtab = $2; addToCurrentSubProgList($2); }
               compStmt SEMICOLON                                { $$ = create_Prog($2, $3, $1, $5); }
             | /* epsilon */                                     { $$ = NULL; }
             ;
 
-subProgHead : FUNCTION IDENTIFIER args COLON type SEMICOLON     { $$ = create_SubProgHead($2, $3, $5); printIdentListType($3); }
-            | PROCEDURE IDENTIFIER args SEMICOLON               { $$ = create_SubProgHead($2, $3, NULL); printIdentListType($3); }
+subProgHead : FUNCTION IDENTIFIER args COLON type SEMICOLON     { $$ = create_SubProgHead($2, $3, $5); }
+            | PROCEDURE IDENTIFIER args SEMICOLON               { $$ = create_SubProgHead($2, $3, NULL); }
             ;
 
 args        : BRACKETS_OPEN parList BRACKETS_CLOSING            { $$ = $2; }
@@ -374,7 +446,9 @@ ENTRY* create_IdentListType(ENTRY* identList, ENTRY* type) {
 
 ENTRY* create_IdentList(Token* identifier, ENTRY* identList) {
     ENTRY* entry = (ENTRY*) malloc(sizeof(ENTRY));
+    
     entry->base.id = identifier->lexeme;
+    entry->typ = ENTRY::_VAR;
 
     if (identList == NULL) {
         return entry;
@@ -415,26 +489,42 @@ ENTRY* create_TypeEntry(Token* typeToken, Token* tokenStart, Token* tokenEnd) {
 N_STMT* create_AssignmentStmt(Token* identifier, N_EXPR* indexExpr, N_EXPR* rhs) {
     N_ASSIGN* assign_stmt = (N_ASSIGN*) malloc(sizeof(N_ASSIGN));
 
+    assign_stmt->rhs_expr = rhs;
+
     assign_stmt->var_ref = (N_VAR_REF*) malloc(sizeof(N_VAR_REF));
     assign_stmt->var_ref->id = identifier->lexeme;
     assign_stmt->var_ref->index = indexExpr;
 
-    // check symbol table
-    ENTRY* symtableEntry = getEntryFromSymtable(current_varDecl_symtab, current_parameters_symtab, identifier->lexeme);
-    
-    if (symtableEntry == NULL) {
-        std::cerr << "Using undeclared variable '" << identifier->lexeme << "' at line " << yylineno << ". Aborting.";
-    } 
-    assign_stmt->var_ref->symtab_entry = symtableEntry;
+    ENTRY* symtableEntry = NULL;
 
-    if (current_varDecl_symtab != NULL) {
-        std::cout << "[ASSIGNING VARIABLE " << identifier->lexeme << ": current symtab = " << current_varDecl_symtab->base.id << "]\n";
-    } else {
-        std::cout << "[ASSIGNING VARIABLE " << identifier->lexeme << ": current symtab = NULL]\n";
+    // check if it's an assignment to the current function (= return statement)
+    if (current_subProg_symtab != NULL) {
+        if (strcmp(identifier->lexeme, current_subProg_symtab->base.id) == 0) {
+            symtableEntry = current_subProg_symtab;
+
+            std::cout << "[ASSIGNMENT STATEMENT] found return statement, variable lexeme = " << identifier->lexeme << ", adding it to symtab " << current_subProg_symtab->base.id << "\n";
+        }
     }
-    
 
-    assign_stmt->rhs_expr = rhs;
+    // if it is not a return statement, check the symbol table for the variable that is assigned
+    if (symtableEntry == NULL) {
+        ENTRY* current_parameters_symtab = current_subProg_symtab != NULL ? current_subProg_symtab->ext.prog.par_list : NULL;
+        symtableEntry = getEntryFromSymtable(current_varDecl_symtab, current_parameters_symtab, identifier->lexeme);
+        
+        std::cout << "[ASSIGNMENT STATEMENT] variable lexeme = " << identifier->lexeme << 
+            ", current varDeclSymtab = " << (current_varDecl_symtab != NULL ? current_varDecl_symtab->base.id : "NULL") << 
+            ", current argsSymtab = " << (current_parameters_symtab != NULL ? current_parameters_symtab->base.id : "NULL") << 
+            ", found entry = " << (symtableEntry != NULL ? symtableEntry->base.id : "NULL") << 
+            "\n";
+    }
+
+    // print error message if no symtable entry found
+    if (symtableEntry == NULL) {
+        std::cerr << "[ERROR] Using undeclared variable '" << identifier->lexeme << "' at line " << yylineno << "!\n";
+    } 
+
+    // link var_ref to the found symtable entry (or NULL)
+    assign_stmt->var_ref->symtab_entry = symtableEntry;
 
     return create_Stmt(N_STMT::_ASSIGN, assign_stmt, NULL, NULL, NULL);
 }
@@ -460,6 +550,13 @@ N_STMT* create_WhileStmt(N_EXPR* condition, N_STMT* body) {
 
 N_STMT* create_CallStmt(Token* identifierToken, N_EXPR* par_list) {
     N_CALL* call_stmt = (N_CALL*) malloc(sizeof(N_CALL));
+
+    ENTRY* callEntry = getEntryFromMethodList(identifierToken->lexeme);
+    std::cout << "[LINKING CALL STMT] linking call to " << identifierToken->lexeme << ", found callEntry: " << (callEntry != NULL ? callEntry->base.id : "NULL") << "\n";
+    if (callEntry == NULL) {
+        std::cerr << "[ERROR] Calling undeclared function '" << identifierToken->lexeme << "' at line " << yylineno << "!\n";
+    }
+    call_stmt->symtab_entry = callEntry;
 
     call_stmt->id = identifierToken->lexeme;
     call_stmt->par_list = par_list;
@@ -514,6 +611,36 @@ N_EXPR* create_IdentifierExpr(Token* identifierToken, N_EXPR* indexExpr) {
     expr->desc.var_ref->id = identifierToken->lexeme;
     expr->desc.var_ref->index = indexExpr;
 
+    ENTRY* symtableEntry = NULL;
+
+    // check if identifier is referring to the return value of the current function
+    if (current_subProg_symtab != NULL) {
+        if (strcmp(identifierToken->lexeme, current_subProg_symtab->base.id) == 0) {
+            symtableEntry = current_subProg_symtab;
+
+            std::cout << "[IDENTIFIER EXPRESSION] found reference to return value, variable lexeme = " << identifierToken->lexeme << ", adding it to symtab " << current_subProg_symtab->base.id << "\n";
+        }
+    }
+
+    // if it is not a return statement, check the symbol table for the variable that is assigned
+    if (symtableEntry == NULL) {
+        ENTRY* current_parameters_symtab = current_subProg_symtab != NULL ? current_subProg_symtab->ext.prog.par_list : NULL;
+        symtableEntry = getEntryFromSymtable(current_varDecl_symtab, current_parameters_symtab, identifierToken->lexeme);
+
+        std::cout << "[IDENTIFIER EXPRESSION] variable lexeme = " << identifierToken->lexeme <<
+            ", current varDeclSymtab = " << (current_varDecl_symtab != NULL ? current_varDecl_symtab->base.id : "NULL") << 
+            ", current argsSymtab = " << (current_parameters_symtab != NULL ? current_parameters_symtab->base.id : "NULL") << 
+            ", found entry = " << (symtableEntry != NULL ? symtableEntry->base.id : "NULL") << 
+            "\n";
+    }
+
+    // print error message if no symtable entry found
+    if (symtableEntry == NULL) {
+        std::cerr << "[ERROR] Using undeclared variable '" << identifierToken->lexeme << "' at line " << yylineno << "!\n";
+    } 
+
+    expr->desc.var_ref->symtab_entry = symtableEntry;
+
     return expr;
 }
 
@@ -539,6 +666,13 @@ N_EXPR* create_CallExpr(Token* funcToken, N_EXPR* parList) {
     expr->desc.func_call->id = funcToken->lexeme;
     expr->desc.func_call->par_list = parList;
 
+    ENTRY* callEntry = getEntryFromMethodList(funcToken->lexeme);
+    std::cout << "[LINKING CALL EXPR] linking call to " << funcToken->lexeme << ", found callEntry: " << (callEntry != NULL ? callEntry->base.id : "NULL") << "\n";
+    if (callEntry == NULL) {
+        std::cerr << "[ERROR] Calling undeclared function '" << funcToken->lexeme << "' at line " << yylineno << "!\n";
+    }
+    expr->desc.func_call->symtab_entry = callEntry;
+
     return expr;
 }
 
@@ -553,6 +687,7 @@ void appendExprToExprList(N_EXPR* exprList, N_EXPR* expr) {
 /* =========================================================== */
 /* ================== Symbol table helper ==================== */
 /* =========================================================== */
+
 ENTRY* getEntryFromSymtable(ENTRY* symtable, char* identifier) {
     while (symtable != NULL) {
         // checks if the identifier match, if they match, return this symtable entry
@@ -567,10 +702,27 @@ ENTRY* getEntryFromSymtable(ENTRY* symtable, char* identifier) {
     return NULL;
 }
 
+ENTRY* getEntryFromSymtableOrGlobal(ENTRY* symtable, char* identifier) {
+    ENTRY* entryInCurrent = getEntryFromSymtable(symtable, identifier);
+    return entryInCurrent != NULL ? entryInCurrent : getEntryFromSymtable(global_varDecl_symtab, identifier);
+}
+
 ENTRY* getEntryFromSymtable(ENTRY* varDeclSymtab, ENTRY* paramsSymtab, char* identifier) {
     // prioritise the paramater symbol table (not sure which of the two, params and variable declarations, actually has priority)
-    ENTRY* paramsEntry = getEntryFromSymtable(paramsSymtab, identifier);
+    ENTRY* paramsEntry = getEntryFromSymtableOrGlobal(paramsSymtab, identifier);
     return paramsEntry != NULL ? paramsEntry : getEntryFromSymtable(varDeclSymtab, identifier);
+}
+
+ENTRY* getEntryFromMethodList(char* identifier) {
+    METHOD* meth = current_subProgList;
+    while (meth != NULL) {
+        if (strcmp(identifier, meth->subProg->base.id) == 0) {
+            return meth->subProg;
+        }
+        meth = meth->next;
+    }
+
+    return NULL;
 }
 
 

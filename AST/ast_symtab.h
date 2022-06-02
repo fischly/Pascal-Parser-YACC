@@ -115,6 +115,7 @@ typedef struct tN_WHILE {
 
 /* 6. Function or procedure call */
 typedef struct tN_CALL {
+  ENTRY *symtab_entry;
   char *id;		/* Id of function or procedure */
   N_EXPR *par_list;	/* Actual parameters */
 } N_CALL;
@@ -140,6 +141,11 @@ typedef struct tN_PROG {
   struct tN_PROG *next;	/* Next program module in the list of modules */
 } N_PROG;
 
+
+typedef struct tMETHOD {
+    ENTRY* subProg;
+    tMETHOD* next;
+} METHOD;
 
 /* Root node of the main program's AST */
 // N_PROG * ast; 
