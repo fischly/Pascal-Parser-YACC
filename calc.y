@@ -5,6 +5,7 @@
 
     #include "AST/Token.h"
     #include "AST/ASTPrinter.h"
+    #include "AST/AST2MIPS.h"
     #include "AST/ast_symtab.h"
 
     void yyerror(const char* msg);
@@ -53,6 +54,7 @@
 
 
 
+    /* OUTPUT HELPERS FOR EASIER DEBUGGING */
     const char* DATA_TYPE_NAMES[] = { [0] = "_BOOL", [1] = "_INT", [2] = "_REAL", [3] = "_VOID" };
     const char* ENTRY_TYPE[] = { [0] = "_CONST", [1] = "_VAR", [2] = "_ARRAY", [3] = "_PROG", [4] = "_CALL" };
 
@@ -737,7 +739,8 @@ int main (void) {
     // if no error occured, print the resulting AST
     if (result != NULL) {
         // from ASTPrinter.h
-        printProgram(result);
+        /* printProgram(result); */
+        assembleProgram(result);
     }
 }
 
