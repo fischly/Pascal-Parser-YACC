@@ -17,9 +17,12 @@
 
     // variable to hold the expression AST temporarily
     N_PROG* result;
+
+    ENTRY* global_varDecl_symtab;  // symtab containing variable declarations of global scope (program scope)
+    
     ENTRY* current_varDecl_symtab; // symtab containing variable declaration of the current function
     ENTRY* current_subProg_symtab; // symtab containing parameters of the current function
-    ENTRY* global_varDecl_symtab;  // symtab containing variable declarations of global scope (program scope)
+
     METHOD* current_subProgList;   // list of all seen subprog entries to link them 
 
     // forward declarations
@@ -46,10 +49,12 @@
     N_EXPR* create_CallExpr(Token* funcToken, N_EXPR* parList);
     void appendExprToExprList(N_EXPR* exprList, N_EXPR* expr);
 
+    void addMethodToGlobalScope(ENTRY* subProgEntry);
+
     ENTRY* getEntryFromSymtable(ENTRY* symtable, char* identifier);
     ENTRY* getEntryFromSymtable(ENTRY* varDeclSymtab, ENTRY* paramsSymtab, char* identifier);
     ENTRY* getEntryFromSymtableOrGlobal(ENTRY* symtable, char* identifier);
-    ENTRY* getEntryFromMethodList(char* identifier);
+    ENTRY* getEntryFromGlobalScope(char* identifier);
 
 
 
@@ -58,18 +63,8 @@
 
     void printVarDecl(ENTRY* decl) {
         while (decl != NULL) {
-            if (decl->typ == ENTRY::_VAR) {
-                std::cout << " - [" << ENTRY_TYPE[decl->typ] << "] " << decl->base.id << ": " << DATA_TYPE_NAMES[decl->data_type] << "\n";
-            } else if (decl->typ == ENTRY::_CONST) {
-                std::cout << " - [" << ENTRY_TYPE[decl->typ] << "] ";
-                switch (decl->data_type) {
-                    case DATA_TYPE::_BOOL: std::cout << (decl->base.bool_val == _BOOLEAN::_FALSE ? "false" : "true"); break;
-                    case DATA_TYPE::_INT:  std::cout << decl->base.int_val; break;
-                    case DATA_TYPE::_REAL: std::cout << decl->base.real_val; break;
-                    case DATA_TYPE::_VOID: std::cout << "VOID"; break;
-                }
-                std::cout << ": " << DATA_TYPE_NAMES[decl->data_type] << "\n";
-            }
+            std::cout << " - [" << ENTRY_TYPE[decl->typ] << "] " << decl->base.id << ": " << DATA_TYPE_NAMES[decl->data_type] << "\n";
+            
             decl = decl->next;
         }
     }
@@ -83,7 +78,11 @@
         // other methods (sub programs)
         N_PROG* other = prog->next;
         while (other != NULL) {
-            std::cout << "\n\n---- Method (" << other->symtab_entry->base.id << ") ----" << std::endl;
+            std::cout << "\n\n---- Method (" << other->symtab_entry->base.id << 
+                ": " << DATA_TYPE_NAMES[other->symtab_entry->data_type] << 
+                "[" << other->symtab_entry->ext.bounds.low << ".." << other->symtab_entry->ext.bounds.upp << "]" << 
+                ") ----" << std::endl;
+                
             std::cout << " arguments\n";
             ENTRY* arg = other->symtab_entry->ext.prog.par_list;
             while (arg != NULL) {
@@ -99,18 +98,6 @@
 
         std::cout << "================= Printing all variables DONE ==========================" << std::endl << std::endl;
 
-    }
-
-    void printIdentListType(ENTRY* identList) {
-        
-        while (identList != NULL) {
-            std::cout << "[IDENTLIST ENTRY] id = " << identList->base.id << 
-                ", data_type = " << identList->data_type << 
-                ", low = " << identList->ext.bounds.low << 
-                ", upp = " << identList->ext.bounds.upp << 
-                "\n";
-            identList = identList->next;
-        }
     }
 
 
@@ -230,7 +217,7 @@ simpleType  : INTEGER
 /* ===================== Method grammar ====================== */
 /* =========================================================== */
 
-subProgList : subProgList subProgHead varDec                    { current_varDecl_symtab = $3; current_subProg_symtab = $2; addToCurrentSubProgList($2); }
+subProgList : subProgList subProgHead varDec                    { current_varDecl_symtab = $3; current_subProg_symtab = $2; addMethodToGlobalScope(current_subProg_symtab); }
               compStmt SEMICOLON                                { $$ = create_Prog($2, $3, $1, $5); }
             | /* epsilon */                                     { $$ = NULL; }
             ;
@@ -405,6 +392,11 @@ ENTRY* create_SubProgHead(Token* identifier, ENTRY* args, ENTRY* returnType) {
         methodEntry->data_type = DATA_TYPE::_VOID;
     } else {
         methodEntry->data_type = returnType->data_type;
+
+        if (returnType->typ == ENTRY::_ARRAY) {
+            methodEntry->ext.bounds.low = returnType->ext.bounds.low;
+            methodEntry->ext.bounds.upp = returnType->ext.bounds.upp;
+        }
     }
     
 
@@ -437,6 +429,7 @@ ENTRY* create_IdentListType(ENTRY* identList, ENTRY* type) {
         identListIter->data_type = type->data_type;
         identListIter->ext.bounds.low = type->ext.bounds.low;
         identListIter->ext.bounds.upp = type->ext.bounds.upp;
+        identListIter->typ = type->typ;
 
         identListIter = identListIter->next;
     }
@@ -448,7 +441,6 @@ ENTRY* create_IdentList(Token* identifier, ENTRY* identList) {
     ENTRY* entry = (ENTRY*) malloc(sizeof(ENTRY));
     
     entry->base.id = identifier->lexeme;
-    entry->typ = ENTRY::_VAR;
 
     if (identList == NULL) {
         return entry;
@@ -475,8 +467,11 @@ ENTRY* create_TypeEntry(Token* typeToken, Token* tokenStart, Token* tokenEnd) {
     }
 
     if (tokenStart != NULL && tokenEnd != NULL) {
+        entry->typ = ENTRY::_ARRAY;
         entry->ext.bounds.low = atoi(tokenStart->lexeme);
         entry->ext.bounds.upp = atoi(tokenEnd->lexeme);
+    } else {
+        entry->typ = ENTRY::_VAR;
     }
 
     return entry;
@@ -492,7 +487,6 @@ N_STMT* create_AssignmentStmt(Token* identifier, N_EXPR* indexExpr, N_EXPR* rhs)
     assign_stmt->rhs_expr = rhs;
 
     assign_stmt->var_ref = (N_VAR_REF*) malloc(sizeof(N_VAR_REF));
-    assign_stmt->var_ref->id = identifier->lexeme;
     assign_stmt->var_ref->index = indexExpr;
 
     ENTRY* symtableEntry = NULL;
@@ -502,7 +496,7 @@ N_STMT* create_AssignmentStmt(Token* identifier, N_EXPR* indexExpr, N_EXPR* rhs)
         if (strcmp(identifier->lexeme, current_subProg_symtab->base.id) == 0) {
             symtableEntry = current_subProg_symtab;
 
-            std::cout << "[ASSIGNMENT STATEMENT] found return statement, variable lexeme = " << identifier->lexeme << ", adding it to symtab " << current_subProg_symtab->base.id << "\n";
+            std::cout << "[ASSIGNMENT STATEMENT] found return statement, variable lexeme = " << identifier->lexeme << ", referencing it to symtable " << current_subProg_symtab->base.id << "\n";
         }
     }
 
@@ -551,12 +545,21 @@ N_STMT* create_WhileStmt(N_EXPR* condition, N_STMT* body) {
 N_STMT* create_CallStmt(Token* identifierToken, N_EXPR* par_list) {
     N_CALL* call_stmt = (N_CALL*) malloc(sizeof(N_CALL));
 
-    ENTRY* callEntry = getEntryFromMethodList(identifierToken->lexeme);
-    std::cout << "[LINKING CALL STMT] linking call to " << identifierToken->lexeme << ", found callEntry: " << (callEntry != NULL ? callEntry->base.id : "NULL") << "\n";
+    ENTRY* callEntry = getEntryFromGlobalScope(identifierToken->lexeme);
+    std::cout << "[LINKING CALLEXPR '" << identifierToken->lexeme << "' to call entry of global table named " << 
+        (callEntry != NULL ? callEntry->base.id : "NULL") << "\n";
+
     if (callEntry == NULL) {
         std::cerr << "[ERROR] Calling undeclared function '" << identifierToken->lexeme << "' at line " << yylineno << "!\n";
     }
     call_stmt->symtab_entry = callEntry;
+
+    /* ENTRY* callEntry = getEntryFromGlobalScope(identifierToken->lexeme);
+    std::cout << "[LINKING CALL STMT] linking call to " << identifierToken->lexeme << ", found callEntry: " << (callEntry != NULL ? callEntry->base.id : "NULL") << "\n";
+    if (callEntry == NULL) {
+        std::cerr << "[ERROR] Calling undeclared function '" << identifierToken->lexeme << "' at line " << yylineno << "!\n";
+    }
+    call_stmt->symtab_entry = callEntry; */
 
     call_stmt->id = identifierToken->lexeme;
     call_stmt->par_list = par_list;
@@ -608,7 +611,6 @@ N_EXPR* create_IdentifierExpr(Token* identifierToken, N_EXPR* indexExpr) {
     expr->typ = tN_EXPR::VAR_REF;
 
     expr->desc.var_ref = (N_VAR_REF*) malloc(sizeof(N_VAR_REF));
-    expr->desc.var_ref->id = identifierToken->lexeme;
     expr->desc.var_ref->index = indexExpr;
 
     ENTRY* symtableEntry = NULL;
@@ -618,7 +620,7 @@ N_EXPR* create_IdentifierExpr(Token* identifierToken, N_EXPR* indexExpr) {
         if (strcmp(identifierToken->lexeme, current_subProg_symtab->base.id) == 0) {
             symtableEntry = current_subProg_symtab;
 
-            std::cout << "[IDENTIFIER EXPRESSION] found reference to return value, variable lexeme = " << identifierToken->lexeme << ", adding it to symtab " << current_subProg_symtab->base.id << "\n";
+            /* std::cout << "[IDENTIFIER EXPRESSION] found reference to return value, variable lexeme = " << identifierToken->lexeme << ", adding it to symtab " << current_subProg_symtab->base.id << "\n"; */
         }
     }
 
@@ -627,11 +629,11 @@ N_EXPR* create_IdentifierExpr(Token* identifierToken, N_EXPR* indexExpr) {
         ENTRY* current_parameters_symtab = current_subProg_symtab != NULL ? current_subProg_symtab->ext.prog.par_list : NULL;
         symtableEntry = getEntryFromSymtable(current_varDecl_symtab, current_parameters_symtab, identifierToken->lexeme);
 
-        std::cout << "[IDENTIFIER EXPRESSION] variable lexeme = " << identifierToken->lexeme <<
+        /* std::cout << "[IDENTIFIER EXPRESSION] variable lexeme = " << identifierToken->lexeme <<
             ", current varDeclSymtab = " << (current_varDecl_symtab != NULL ? current_varDecl_symtab->base.id : "NULL") << 
             ", current argsSymtab = " << (current_parameters_symtab != NULL ? current_parameters_symtab->base.id : "NULL") << 
             ", found entry = " << (symtableEntry != NULL ? symtableEntry->base.id : "NULL") << 
-            "\n";
+            "\n"; */
     }
 
     // print error message if no symtable entry found
@@ -666,11 +668,14 @@ N_EXPR* create_CallExpr(Token* funcToken, N_EXPR* parList) {
     expr->desc.func_call->id = funcToken->lexeme;
     expr->desc.func_call->par_list = parList;
 
-    ENTRY* callEntry = getEntryFromMethodList(funcToken->lexeme);
-    std::cout << "[LINKING CALL EXPR] linking call to " << funcToken->lexeme << ", found callEntry: " << (callEntry != NULL ? callEntry->base.id : "NULL") << "\n";
+    ENTRY* callEntry = getEntryFromGlobalScope(funcToken->lexeme);
+    std::cout << "[LINKING CALLEXPR '" << funcToken->lexeme << "' to call entry of global table named " << 
+        (callEntry != NULL ? callEntry->base.id : "NULL") << "\n";
+
     if (callEntry == NULL) {
         std::cerr << "[ERROR] Calling undeclared function '" << funcToken->lexeme << "' at line " << yylineno << "!\n";
     }
+
     expr->desc.func_call->symtab_entry = callEntry;
 
     return expr;
@@ -687,6 +692,20 @@ void appendExprToExprList(N_EXPR* exprList, N_EXPR* expr) {
 /* =========================================================== */
 /* ================== Symbol table helper ==================== */
 /* =========================================================== */
+void addMethodToGlobalScope(ENTRY* subProgEntry) {
+    ENTRY* callEntry = (ENTRY*) malloc(sizeof(ENTRY));
+    callEntry->typ = ENTRY::_CALL;
+    callEntry->base.id = strdup(subProgEntry->base.id);
+    /* callEntry->ext.prog.symtab_entry = subProgEntry; */
+    
+    ENTRY* global = global_varDecl_symtab;
+    while (global->next != NULL) {
+        global = global->next;
+    }
+
+    global->next = callEntry;
+}
+
 
 ENTRY* getEntryFromSymtable(ENTRY* symtable, char* identifier) {
     while (symtable != NULL) {
@@ -713,15 +732,15 @@ ENTRY* getEntryFromSymtable(ENTRY* varDeclSymtab, ENTRY* paramsSymtab, char* ide
     return paramsEntry != NULL ? paramsEntry : getEntryFromSymtable(varDeclSymtab, identifier);
 }
 
-ENTRY* getEntryFromMethodList(char* identifier) {
-    METHOD* meth = current_subProgList;
-    while (meth != NULL) {
-        if (strcmp(identifier, meth->subProg->base.id) == 0) {
-            return meth->subProg;
-        }
-        meth = meth->next;
-    }
+ENTRY* getEntryFromGlobalScope(char* identifier) {
+    ENTRY* entry = global_varDecl_symtab;
 
+    while (entry != NULL) {
+        if (strcmp(identifier, entry->base.id) == 0) {
+            return entry;
+        }
+        entry = entry->next;
+    }
     return NULL;
 }
 
