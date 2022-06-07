@@ -63,7 +63,11 @@
 
     void printVarDecl(ENTRY* decl) {
         while (decl != NULL) {
-            std::cout << " - [" << ENTRY_TYPE[decl->typ] << "] " << decl->base.id << ": " << DATA_TYPE_NAMES[decl->data_type] << "\n";
+            std::cout << " - [" << ENTRY_TYPE[decl->typ] << "] " << decl->base.id << ": " << DATA_TYPE_NAMES[decl->data_type]; 
+            if (decl->typ == ENTRY::_ARRAY) {
+                std::cout << "[" << decl->ext.bounds.low << ".." << decl->ext.bounds.upp << "]";
+            }  
+            std::cout << "\n";
             
             decl = decl->next;
         }
@@ -84,11 +88,7 @@
                 ") ----" << std::endl;
                 
             std::cout << " arguments\n";
-            ENTRY* arg = other->symtab_entry->ext.prog.par_list;
-            while (arg != NULL) {
-                std::cout << " - [" << ENTRY_TYPE[arg->typ] << "] " << arg->base.id << ": " << DATA_TYPE_NAMES[arg->data_type] << "\n";
-                arg = arg->next;
-            }
+            printVarDecl(other->symtab_entry->ext.prog.par_list);
 
             std::cout << " varDecl\n";
             printVarDecl(other->symtab_entry->next);
@@ -496,7 +496,7 @@ N_STMT* create_AssignmentStmt(Token* identifier, N_EXPR* indexExpr, N_EXPR* rhs)
         if (strcmp(identifier->lexeme, current_subProg_symtab->base.id) == 0) {
             symtableEntry = current_subProg_symtab;
 
-            std::cout << "[ASSIGNMENT STATEMENT] found return statement, variable lexeme = " << identifier->lexeme << ", referencing it to symtable " << current_subProg_symtab->base.id << "\n";
+            /* std::cout << "[ASSIGNMENT STATEMENT] found return statement, variable lexeme = " << identifier->lexeme << ", referencing it to symtable " << current_subProg_symtab->base.id << "\n"; */
         }
     }
 
@@ -505,11 +505,11 @@ N_STMT* create_AssignmentStmt(Token* identifier, N_EXPR* indexExpr, N_EXPR* rhs)
         ENTRY* current_parameters_symtab = current_subProg_symtab != NULL ? current_subProg_symtab->ext.prog.par_list : NULL;
         symtableEntry = getEntryFromSymtable(current_varDecl_symtab, current_parameters_symtab, identifier->lexeme);
         
-        std::cout << "[ASSIGNMENT STATEMENT] variable lexeme = " << identifier->lexeme << 
+        /* std::cout << "[ASSIGNMENT STATEMENT] variable lexeme = " << identifier->lexeme << 
             ", current varDeclSymtab = " << (current_varDecl_symtab != NULL ? current_varDecl_symtab->base.id : "NULL") << 
             ", current argsSymtab = " << (current_parameters_symtab != NULL ? current_parameters_symtab->base.id : "NULL") << 
             ", found entry = " << (symtableEntry != NULL ? symtableEntry->base.id : "NULL") << 
-            "\n";
+            "\n"; */
     }
 
     // print error message if no symtable entry found
@@ -546,8 +546,8 @@ N_STMT* create_CallStmt(Token* identifierToken, N_EXPR* par_list) {
     N_CALL* call_stmt = (N_CALL*) malloc(sizeof(N_CALL));
 
     ENTRY* callEntry = getEntryFromGlobalScope(identifierToken->lexeme);
-    std::cout << "[LINKING CALLEXPR '" << identifierToken->lexeme << "' to call entry of global table named " << 
-        (callEntry != NULL ? callEntry->base.id : "NULL") << "\n";
+    /* std::cout << "[LINKING CALLEXPR '" << identifierToken->lexeme << "' to call entry of global table named " << 
+        (callEntry != NULL ? callEntry->base.id : "NULL") << "\n"; */
 
     if (callEntry == NULL) {
         std::cerr << "[ERROR] Calling undeclared function '" << identifierToken->lexeme << "' at line " << yylineno << "!\n";
@@ -669,8 +669,8 @@ N_EXPR* create_CallExpr(Token* funcToken, N_EXPR* parList) {
     expr->desc.func_call->par_list = parList;
 
     ENTRY* callEntry = getEntryFromGlobalScope(funcToken->lexeme);
-    std::cout << "[LINKING CALLEXPR '" << funcToken->lexeme << "' to call entry of global table named " << 
-        (callEntry != NULL ? callEntry->base.id : "NULL") << "\n";
+    /* std::cout << "[LINKING CALLEXPR '" << funcToken->lexeme << "' to call entry of global table named " << 
+        (callEntry != NULL ? callEntry->base.id : "NULL") << "\n"; */
 
     if (callEntry == NULL) {
         std::cerr << "[ERROR] Calling undeclared function '" << funcToken->lexeme << "' at line " << yylineno << "!\n";
