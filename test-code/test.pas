@@ -128,7 +128,7 @@ begin
   i := 1;
   while i < b do
   begin
-    x[i] := (n-i+1)*3.14;
+    x[i] := (a-i+1)*3.14; { changed "n" to "a" in order to fix the compilation error (n is not declared in any scope) }
     i := i+1
   end;
 
