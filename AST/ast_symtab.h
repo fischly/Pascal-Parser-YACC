@@ -139,11 +139,5 @@ typedef struct tN_PROG {
   struct tN_PROG *next;	/* Next program module in the list of modules */
 } N_PROG;
 
-
-typedef struct tMETHOD {
-    ENTRY* subProg;
-    tMETHOD* next;
-} METHOD;
-
 /* Root node of the main program's AST */
 // N_PROG * ast; 
