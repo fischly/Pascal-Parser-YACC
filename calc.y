@@ -23,8 +23,6 @@
     ENTRY* current_varDecl_symtab; // symtab containing variable declaration of the current function
     ENTRY* current_subProg_symtab; // symtab containing parameters of the current function
 
-    METHOD* current_subProgList;   // list of all seen subprog entries to link them 
-
     // forward declarations
     N_PROG* create_RootProg(Token* progIdentifier, ENTRY* varDec, N_PROG* subProgList, N_STMT* compStmt);
     N_PROG* create_Prog(ENTRY* symtabMethodEntry, ENTRY* varDec, N_PROG* subProgList, N_STMT* compStmt);
@@ -98,23 +96,6 @@
 
         std::cout << "================= Printing all variables DONE ==========================" << std::endl << std::endl;
 
-    }
-
-
-    void addToCurrentSubProgList(ENTRY* subProgHeadEntry) {
-        METHOD* meth = (METHOD*) malloc(sizeof(METHOD));
-        meth->subProg = subProgHeadEntry;
-
-        if (current_subProgList == NULL) {
-            current_subProgList = meth;
-        } else {
-            // append to the end
-            METHOD* m = current_subProgList;
-            while (m->next != NULL) {
-                m = m->next;
-            }
-            m->next = meth;
-        }
     }
 %}
 
@@ -553,14 +534,6 @@ N_STMT* create_CallStmt(Token* identifierToken, N_EXPR* par_list) {
         std::cerr << "[ERROR] Calling undeclared function '" << identifierToken->lexeme << "' at line " << yylineno << "!\n";
     }
     call_stmt->symtab_entry = callEntry;
-
-    /* ENTRY* callEntry = getEntryFromGlobalScope(identifierToken->lexeme);
-    std::cout << "[LINKING CALL STMT] linking call to " << identifierToken->lexeme << ", found callEntry: " << (callEntry != NULL ? callEntry->base.id : "NULL") << "\n";
-    if (callEntry == NULL) {
-        std::cerr << "[ERROR] Calling undeclared function '" << identifierToken->lexeme << "' at line " << yylineno << "!\n";
-    }
-    call_stmt->symtab_entry = callEntry; */
-
     call_stmt->id = identifierToken->lexeme;
     call_stmt->par_list = par_list;
 
@@ -653,7 +626,6 @@ N_EXPR* create_OPExpr(N_EXPR* left, Token* op, N_EXPR* right) {
 
     expr->desc.operation.expr = left;
     expr->desc.operation.expr->next = right;
-    /* expr->desc.operation.op = tN_EXPR::uN_EXPR_UNION::tN_OP::EQ_OP; // EQ_OP */
     expr->desc.operation.op = op; // EQ_OP
 
     return expr;
